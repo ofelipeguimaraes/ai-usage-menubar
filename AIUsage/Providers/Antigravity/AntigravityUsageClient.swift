@@ -3,6 +3,10 @@ import Foundation
 enum AntigravityCloudOutcome: Sendable {
     case success(Data)
     case authentication
+    /// The token is valid but the account may not read this endpoint.
+    /// Starter tiers answer `retrieveUserQuotaSummary` this way (#3501),
+    /// which is not a sign-in problem and must not be reported as one.
+    case denied
     case unavailable
 }
 
@@ -63,8 +67,11 @@ struct AntigravityUsageClient: Sendable {
             guard let response = try? await http.send(request) else {
                 continue
             }
-            if response.statusCode == 401 || response.statusCode == 403 {
+            if response.statusCode == 401 {
                 return .authentication
+            }
+            if response.statusCode == 403 {
+                return .denied
             }
             if (200..<300).contains(response.statusCode) {
                 return .success(response.body)
