@@ -121,7 +121,7 @@ causes at most one refresh and one retry.
 | Provider | Local credential source | First-party usage contract | Mapped metrics |
 | --- | --- | --- | --- |
 | Cursor | Cursor state SQLite database, then `cursor-access-token` and `cursor-refresh-token` Keychain items | `api2.cursor.sh` DashboardService Connect RPCs | Total, Auto, API |
-| Antigravity | Keychain service `gemini`, account `antigravity` | Google Cloud Code quota-summary API, with model-quota fallback | Gemini session/weekly, Claude session/weekly |
+| Antigravity | Keychain service `gemini`, account `antigravity` | Running CLI's loopback quota summary, then Google Cloud Code quota-summary API | Gemini session/weekly, Claude session/weekly |
 | GitHub Copilot | Copilot editor config, GitHub CLI config, then `gh:github.com` Keychain item | `api.github.com/copilot_internal/user` | Credits, Chat, Completions |
 | Devin | `~/.local/share/devin/credentials.toml`, then Devin state SQLite database | Codeium SeatManagement Connect RPC | Daily, Weekly |
 | Grok | `~/.grok/auth.json` | Grok CLI billing and settings APIs | Weekly |
@@ -130,6 +130,19 @@ Cursor, Antigravity, and Grok refresh expiring access tokens using the refresh
 credential already stored by the corresponding tool. Refreshed tokens are
 persisted only where necessary; Antigravity's derived access token is cached
 privately by AI Usage and bound to a hash of the current refresh credential.
+
+Antigravity is read from the CLI first. The Cloud Code endpoint is not
+authoritative for every account: Starter tiers answer
+`retrieveUserQuotaSummary` with `403 PERMISSION_DENIED` (error `#3501`) while
+the CLI keeps reporting accurate weekly buckets for the same account. When a
+CLI is running, its loopback quota summary is used, and its self-signed
+certificate is accepted only for host `127.0.0.1`. A denied remote summary is
+treated as transient rather than as a sign-in failure, so the last good values
+stay in memory and are marked stale.
+
+`fetchAvailableModels` is not a usage source. It answers `remainingFraction: 1`
+for every model even when the weekly quota is nearly exhausted, so it would
+render a confident 100% over a nearly spent account.
 
 OpenCode is intentionally not included: its current limits require scanning
 local usage databases and are machine-local estimates, which conflicts with
