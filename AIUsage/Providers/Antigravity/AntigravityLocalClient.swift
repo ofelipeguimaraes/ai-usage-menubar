@@ -51,7 +51,9 @@ struct AntigravityLocalClient: Sendable {
     func listeningPorts() -> [Int] {
         guard let result = try? runner.run(
             executable: "/usr/sbin/lsof",
-            arguments: ["-nP", "-iTCP", "-sTCP:LISTEN", "-c", "agy"],
+            // `-a` matters: without it lsof ORs the selectors and answers
+            // with every listening socket on the machine.
+            arguments: ["-nP", "-iTCP", "-sTCP:LISTEN", "-a", "-c", "agy"],
             environment: [:],
             timeout: 5
         ), result.succeeded else {

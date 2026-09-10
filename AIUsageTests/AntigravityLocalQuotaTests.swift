@@ -34,8 +34,20 @@ private let runningCLISummary = """
 }
 """
 
-private struct StubProcessRunner: ProcessRunning {
+private final class StubProcessRunner: ProcessRunning, @unchecked Sendable {
     let stdout: String
+    private let lock = NSLock()
+    private var invocations: [[String]] = []
+
+    init(stdout: String) {
+        self.stdout = stdout
+    }
+
+    var lastArguments: [String] {
+        lock.lock()
+        defer { lock.unlock() }
+        return invocations.last ?? []
+    }
 
     func run(
         executable: String,
@@ -43,7 +55,10 @@ private struct StubProcessRunner: ProcessRunning {
         environment: [String: String],
         timeout: TimeInterval
     ) throws -> ProcessResult {
-        ProcessResult(exitCode: 0, stdout: stdout, stderr: "")
+        lock.lock()
+        invocations.append(arguments)
+        lock.unlock()
+        return ProcessResult(exitCode: 0, stdout: stdout, stderr: "")
     }
 }
 
@@ -90,6 +105,18 @@ final class AntigravityLocalQuotaTests: XCTestCase {
             probe: { _ in nil }
         )
         XCTAssertEqual(client.listeningPorts(), [54908, 54909])
+    }
+
+    /// Without `-a`, lsof ORs its selectors and reports every listening
+    /// socket on the machine, which would send probes to unrelated servers.
+    func testRestrictsLsofToTheCLIInsteadOfEveryListeningSocket() {
+        let runner = StubProcessRunner(stdout: "")
+        _ = AntigravityLocalClient(runner: runner, probe: { _ in nil })
+            .listeningPorts()
+        XCTAssertTrue(
+            runner.lastArguments.contains("-a"),
+            "lsof selectors must be ANDed: \(runner.lastArguments)"
+        )
     }
 
     func testIgnoresListenerThatAnswersWithoutQuotaGroups() async {
