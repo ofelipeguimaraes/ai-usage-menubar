@@ -11,21 +11,22 @@ struct AntigravityLocalClient: Sendable {
     static let summaryPath =
         "/exa.language_server_pb.LanguageServerService/RetrieveUserQuotaSummary"
 
+    private let runner: ProcessRunning
     private let probe: @Sendable (Int) async -> Data?
-    private let ports: @Sendable () -> [Int]
 
     init(
-        ports: @escaping @Sendable () -> [Int] = AntigravityLocalClient.listeningPorts,
-        probe: @escaping @Sendable (Int) async -> Data? = AntigravityLocalClient.probe
+        runner: ProcessRunning = SystemProcessRunner(),
+        probe: @escaping @Sendable (Int) async -> Data? =
+            AntigravityLocalClient.probe
     ) {
-        self.ports = ports
+        self.runner = runner
         self.probe = probe
     }
 
     /// Returns the first loopback listener that answers with a quota summary,
     /// or `nil` when no CLI is running or none of them answers.
     func summary() async -> Data? {
-        for port in ports() {
+        for port in listeningPorts() {
             if let data = await probe(port), Self.containsGroups(data) {
                 return data
             }
@@ -47,14 +48,16 @@ struct AntigravityLocalClient: Sendable {
 
     /// Loopback ports the running `agy` processes listen on. A single `lsof`
     /// call keeps this cheap enough for the app's scheduled refreshes.
-    static func listeningPorts() -> [Int] {
-        guard let output = run(
-            "/usr/sbin/lsof",
-            ["-nP", "-iTCP", "-sTCP:LISTEN", "-c", "agy"]
-        ) else {
+    func listeningPorts() -> [Int] {
+        guard let result = try? runner.run(
+            executable: "/usr/sbin/lsof",
+            arguments: ["-nP", "-iTCP", "-sTCP:LISTEN", "-c", "agy"],
+            environment: [:],
+            timeout: 5
+        ), result.succeeded else {
             return []
         }
-        return parsePorts(from: output)
+        return Self.parsePorts(from: result.stdout)
     }
 
     static func parsePorts(from output: String) -> [Int] {
@@ -72,26 +75,6 @@ struct AntigravityLocalClient: Sendable {
             }
         }
         return ports
-    }
-
-    private static func run(_ path: String, _ arguments: [String]) -> String? {
-        guard FileManager.default.isExecutableFile(atPath: path) else {
-            return nil
-        }
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: path)
-        process.arguments = arguments
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = FileHandle.nullDevice
-        do {
-            try process.run()
-        } catch {
-            return nil
-        }
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
-        return String(data: data, encoding: .utf8)
     }
 
     // MARK: - Loopback request
