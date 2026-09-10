@@ -31,6 +31,13 @@ AI Usage shows Claude Code, Codex, Cursor, Antigravity, GitHub Copilot, Devin,
 and Grok limits and stays out of the way. No extra account, API key, local
 server, telemetry, usage history, or background log scanning.
 
+> [!NOTE]
+> **This is a fork.** It fixes Antigravity quota on accounts whose Cloud Code
+> endpoint answers `403 PERMISSION_DENIED`, where upstream reports an expired
+> session or a false 100% left. Everything else is upstream's work. See
+> [FORK.md](FORK.md) and
+> [upstream issue #5](https://github.com/burakgon/ai-usage-menubar/issues/5).
+
 ## Choose exactly what appears.
 
 <p align="center">
