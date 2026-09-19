@@ -12,22 +12,34 @@ struct AntigravityLocalClient: Sendable {
         "/exa.language_server_pb.LanguageServerService/RetrieveUserQuotaSummary"
 
     private let runner: ProcessRunning
-    private let probe: @Sendable (Int) async -> Data?
+    private let probe: @Sendable (Int, String?) async -> Data?
 
     init(
         runner: ProcessRunning = SystemProcessRunner(),
-        probe: @escaping @Sendable (Int) async -> Data? =
+        probe: @escaping @Sendable (Int, String?) async -> Data? =
             AntigravityLocalClient.probe
     ) {
         self.runner = runner
         self.probe = probe
     }
 
+    /// Convenience init that accepts the old `(Int) async -> Data?` signature
+    /// so existing tests keep compiling without changes.
+    init(
+        runner: ProcessRunning,
+        probe: @escaping @Sendable (Int) async -> Data?
+    ) {
+        self.runner = runner
+        self.probe = { port, _ in await probe(port) }
+    }
+
     /// Returns the first loopback listener that answers with a quota summary,
     /// or `nil` when no CLI is running or none of them answers.
     func summary() async -> Data? {
-        for port in listeningPorts() {
-            if let data = await probe(port), Self.containsGroups(data) {
+        let discovered = discoverListeners()
+        for listener in discovered {
+            if let data = await probe(listener.port, listener.csrfToken),
+               Self.containsGroups(data) {
                 return data
             }
         }
@@ -49,6 +61,17 @@ struct AntigravityLocalClient: Sendable {
     /// Loopback ports the running `agy` processes listen on. A single `lsof`
     /// call keeps this cheap enough for the app's scheduled refreshes.
     func listeningPorts() -> [Int] {
+        discoverListeners().map(\.port)
+    }
+
+    struct Listener: Equatable {
+        let port: Int
+        let pid: Int
+        let csrfToken: String?
+    }
+
+    /// Discovers loopback listeners and their CSRF tokens.
+    func discoverListeners() -> [Listener] {
         guard let result = try? runner.run(
             executable: "/usr/sbin/lsof",
             // `-a` matters: without it lsof ORs the selectors and answers
@@ -59,29 +82,157 @@ struct AntigravityLocalClient: Sendable {
         ), result.succeeded else {
             return []
         }
-        return Self.parsePorts(from: result.stdout)
+        let parsed = Self.parsePortsAndPIDs(from: result.stdout)
+        guard !parsed.isEmpty else { return [] }
+
+        // Collect unique PIDs so we look up each token only once.
+        let uniquePIDs = Array(Set(parsed.map(\.pid)))
+        var tokensByPID: [Int: String] = [:]
+        for pid in uniquePIDs {
+            if let token = csrfToken(forPID: pid) {
+                tokensByPID[pid] = token
+            }
+        }
+        return parsed.map { entry in
+            Listener(
+                port: entry.port,
+                pid: entry.pid,
+                csrfToken: tokensByPID[entry.pid]
+            )
+        }
     }
 
-    static func parsePorts(from output: String) -> [Int] {
-        var ports: [Int] = []
+    struct PortAndPID: Equatable {
+        let port: Int
+        let pid: Int
+    }
+
+    static func parsePortsAndPIDs(from output: String) -> [PortAndPID] {
+        var entries: [PortAndPID] = []
         for line in output.split(separator: "\n") {
+            let fields = line.split(separator: " ")
             // Only the CLI itself, never another command whose name contains
             // "agy" as a substring.
-            guard line.split(separator: " ").first == "agy" else { continue }
-            for field in line.split(separator: " ")
-            where field.hasPrefix("127.0.0.1:") {
+            guard fields.first == "agy" else { continue }
+            guard let pid = fields.dropFirst().first.flatMap({ Int($0) })
+            else { continue }
+            for field in fields where field.hasPrefix("127.0.0.1:") {
                 let raw = field.dropFirst("127.0.0.1:".count)
-                if let port = Int(raw), !ports.contains(port) {
-                    ports.append(port)
+                if let port = Int(raw),
+                   !entries.contains(where: { $0.port == port }) {
+                    entries.append(PortAndPID(port: port, pid: pid))
                 }
             }
         }
-        return ports
+        return entries
+    }
+
+    /// Back-compat: the existing `parsePorts` used by tests.
+    static func parsePorts(from output: String) -> [Int] {
+        parsePortsAndPIDs(from: output).map(\.port)
+    }
+
+    // MARK: - CSRF token discovery
+
+    /// Reads the CSRF token that `agy` injects into its child processes.
+    ///
+    /// The token lives only in the environment of child processes; it is not
+    /// stored on disk and not part of the `agy` process's own environment
+    /// block. We find a child via `pgrep -P`, then read its environment
+    /// using `sysctl(KERN_PROCARGS2)` which is allowed for same-user
+    /// processes on macOS.
+    private func csrfToken(forPID pid: Int) -> String? {
+        // First, try to read the token from the environment of child processes.
+        guard let pgrepResult = try? runner.run(
+            executable: "/usr/bin/pgrep",
+            arguments: ["-P", "\(pid)"],
+            environment: [:],
+            timeout: 3
+        ), pgrepResult.succeeded else {
+            return nil
+        }
+
+        let childPIDs = pgrepResult.stdout
+            .split(separator: "\n")
+            .compactMap { Int32($0.trimmingCharacters(in: .whitespacesAndNewlines)) }
+
+        for childPID in childPIDs {
+            if let token = Self.readCSRFFromProcessEnvironment(childPID) {
+                return token
+            }
+        }
+        return nil
+    }
+
+    /// Uses the macOS `sysctl(KERN_PROCARGS2)` API to read the environment
+    /// variables of a process owned by the current user. Returns the value
+    /// of `ANTIGRAVITY_CSRF_TOKEN` if found.
+    private static func readCSRFFromProcessEnvironment(
+        _ pid: Int32
+    ) -> String? {
+        var mib: [Int32] = [CTL_KERN, KERN_PROCARGS2, pid]
+        var size = 0
+        guard sysctl(&mib, 3, nil, &size, nil, 0) == 0, size > 0 else {
+            return nil
+        }
+        var buffer = [UInt8](repeating: 0, count: size)
+        guard sysctl(&mib, 3, &buffer, &size, nil, 0) == 0 else {
+            return nil
+        }
+
+        // The layout of KERN_PROCARGS2 is:
+        // 1. First 4 bytes: argc (Int32, number of command-line arguments)
+        // 2. Executable path (null-terminated)
+        // 3. Padding with null bytes
+        // 4. argc argument strings (each null-terminated)
+        // 5. Environment strings (each null-terminated, "KEY=VALUE")
+        guard size >= 4 else { return nil }
+        let argc = buffer.withUnsafeBytes {
+            $0.load(fromByteOffset: 0, as: Int32.self)
+        }
+
+        // Skip past argc (4 bytes), then skip the executable path.
+        var offset = 4
+        // Skip executable path.
+        while offset < size, buffer[offset] != 0 { offset += 1 }
+        // Skip null padding after executable path.
+        while offset < size, buffer[offset] == 0 { offset += 1 }
+
+        // Skip `argc` argument strings.
+        var argsSkipped = 0
+        while argsSkipped < argc, offset < size {
+            while offset < size, buffer[offset] != 0 { offset += 1 }
+            offset += 1 // skip the null terminator
+            argsSkipped += 1
+        }
+
+        // Now we are at the environment strings.
+        let prefix = "ANTIGRAVITY_CSRF_TOKEN="
+        let prefixBytes = [UInt8](prefix.utf8)
+        while offset < size {
+            // Find end of this env string.
+            let start = offset
+            while offset < size, buffer[offset] != 0 { offset += 1 }
+            let length = offset - start
+            offset += 1 // skip null terminator
+
+            guard length > prefixBytes.count else { continue }
+            if buffer[start..<(start + prefixBytes.count)]
+                .elementsEqual(prefixBytes) {
+                let valueStart = start + prefixBytes.count
+                let valueEnd = start + length
+                return String(
+                    bytes: buffer[valueStart..<valueEnd],
+                    encoding: .utf8
+                )
+            }
+        }
+        return nil
     }
 
     // MARK: - Loopback request
 
-    private static func probe(port: Int) async -> Data? {
+    private static func probe(port: Int, csrfToken: String?) async -> Data? {
         guard let url = URL(
             string: "https://127.0.0.1:\(port)" + summaryPath
         ) else {
@@ -92,6 +243,12 @@ struct AntigravityLocalClient: Sendable {
         request.httpBody = Data("{}".utf8)
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("1", forHTTPHeaderField: "Connect-Protocol-Version")
+        if let csrfToken {
+            request.setValue(
+                csrfToken,
+                forHTTPHeaderField: "X-Codeium-Csrf-Token"
+            )
+        }
         request.timeoutInterval = 5
 
         let delegate = AntigravityLoopbackTrust()
