@@ -322,7 +322,8 @@ final class AppPreferences {
         .antigravity,
         .copilot,
         .devin,
-        .grok
+        .grok,
+        .opencode
     ]
 
     private static func hasLegacyInstallation(

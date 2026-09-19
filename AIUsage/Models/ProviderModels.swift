@@ -8,6 +8,7 @@ enum ProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
     case copilot
     case devin
     case grok
+    case opencode
 
     var id: Self { self }
 
@@ -20,6 +21,7 @@ enum ProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .copilot: "GitHub Copilot"
         case .devin: "Devin"
         case .grok: "Grok"
+        case .opencode: "OpenCode"
         }
     }
 
@@ -32,6 +34,7 @@ enum ProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .copilot: "ProviderCopilot"
         case .devin: "ProviderDevin"
         case .grok: "ProviderGrok"
+        case .opencode: "ProviderOpenCode"
         }
     }
 
@@ -50,11 +53,12 @@ enum ProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
         switch self {
         case .claude: ["claude"]
         case .codex: ["codex"]
-        case .cursor: ["cursor"]
+        case .cursor: ["cursor", "cursor-agent"]
         case .antigravity: ["antigravity", "agy"]
         case .copilot: ["copilot", "github-copilot"]
         case .devin: ["devin"]
         case .grok: ["grok"]
+        case .opencode: ["opencode"]
         }
     }
 
@@ -90,12 +94,14 @@ enum ProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
             ]
         case .grok:
             ["~/.grok"]
+        case .opencode:
+            ["~/.opencode", "~/.config/opencode"]
         }
     }
 
     var defaultMenuBarMetric: MenuBarMetricID {
         switch self {
-        case .cursor: .totalUsage
+        case .cursor, .opencode: .totalUsage
         case .copilot: .credits
         case .claude, .codex, .antigravity, .devin, .grok: .weekly
         }
@@ -600,3 +606,4 @@ protocol DateProviding: Sendable {
 struct SystemDateProvider: DateProviding {
     func now() -> Date { Date() }
 }
+import Foundation

@@ -13,7 +13,7 @@ final class UpdateConfigurationTests: XCTestCase {
             info?["SUPublicEDKey"] as? String,
             "Axec4KdnVCK/H0z6UrhigcI44LRzdrN8vnBxIvqPurc="
         )
-        XCTAssertEqual(info?["SUEnableAutomaticChecks"] as? Bool, true)
+        XCTAssertEqual(info?["SUEnableAutomaticChecks"] as? Bool, false)
         XCTAssertEqual(info?["SURequireSignedFeed"] as? Bool, true)
         XCTAssertEqual(info?["SUVerifyUpdateBeforeExtraction"] as? Bool, true)
         XCTAssertEqual(info?["SUScheduledCheckInterval"] as? Int, 86_400)

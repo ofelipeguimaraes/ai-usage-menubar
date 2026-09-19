@@ -194,16 +194,6 @@ struct SettingsView: View {
 
     private var footer: some View {
         HStack(spacing: 12) {
-            Button("Check for Updates…") {
-                updateController.checkForUpdates()
-            }
-            .disabled(updateController.isChecking)
-
-            if updateController.isChecking {
-                ProgressView()
-                    .controlSize(.small)
-            }
-
             Link("Star on GitHub", destination: AppLinks.repository)
 
             Spacer()

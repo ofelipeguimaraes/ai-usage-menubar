@@ -13,6 +13,6 @@ final class AppServices {
             trackedProviderIDs: preferences.trackedProviderIDs
         )
         launchAtLogin = LaunchAtLoginController()
-        updateController = UpdateController(startingUpdater: startingUpdater)
+        updateController = UpdateController(startingUpdater: false)
     }
 }

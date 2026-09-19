@@ -1,55 +1,18 @@
 import Observation
-import Sparkle
 
 @MainActor
 @Observable
-final class UpdateController: NSObject, SPUUpdaterDelegate {
+final class UpdateController {
     private(set) var availableVersion: String?
     private(set) var isChecking = false
 
-    @ObservationIgnored
-    private var updaterController: SPUStandardUpdaterController!
-
-    init(startingUpdater: Bool = true) {
-        super.init()
-        updaterController = SPUStandardUpdaterController(
-            startingUpdater: startingUpdater,
-            updaterDelegate: self,
-            userDriverDelegate: nil
-        )
-
-        if startingUpdater {
-            isChecking = true
-            updaterController.updater.checkForUpdateInformation()
-        }
+    init(startingUpdater: Bool = false) {
     }
 
     var isUpdateAvailable: Bool {
-        availableVersion != nil
+        false
     }
 
     func checkForUpdates() {
-        isChecking = true
-        updaterController.checkForUpdates(nil)
-    }
-
-    func updater(
-        _ updater: SPUUpdater,
-        didFindValidUpdate item: SUAppcastItem
-    ) {
-        availableVersion = item.displayVersionString
-        isChecking = false
-    }
-
-    func updaterDidNotFindUpdate(_ updater: SPUUpdater) {
-        availableVersion = nil
-        isChecking = false
-    }
-
-    func updater(
-        _ updater: SPUUpdater,
-        didAbortWithError error: any Error
-    ) {
-        isChecking = false
     }
 }
