@@ -6,6 +6,7 @@ struct DashboardView: View {
     @Bindable var launchAtLogin: LaunchAtLoginController
     @Binding var usageDisplayMode: UsageDisplayMode
     @Binding var refreshInterval: RefreshIntervalOption
+    var panelSizeMode: PanelSizeMode = .compact
     let availableUpdateVersion: String?
     let isCheckingForUpdates: Bool
     var checkForUpdates: @MainActor () -> Void = {}
@@ -15,7 +16,8 @@ struct DashboardView: View {
         GlassEffectContainer(spacing: 10) {
             DashboardContentView(
                 store: store,
-                usageDisplayMode: $usageDisplayMode
+                usageDisplayMode: $usageDisplayMode,
+                panelSizeMode: panelSizeMode
             )
                 .safeAreaBar(edge: .bottom, spacing: 0) {
                     footer
@@ -145,6 +147,10 @@ struct RefreshButtonLabel: View {
 struct DashboardContentView: View {
     @Bindable var store: UsageStore
     @Binding var usageDisplayMode: UsageDisplayMode
+    var panelSizeMode: PanelSizeMode = .compact
+
+    /// Fixed scroll height used in compact mode when there are more than 2 providers.
+    private static let compactScrollMaxHeight: CGFloat = 390
 
     var body: some View {
         VStack(spacing: 8) {
@@ -157,11 +163,11 @@ struct DashboardContentView: View {
 
     @ViewBuilder
     private var providerRows: some View {
-        if visibleProviders.count > 2 {
+        if panelSizeMode == .compact && visibleProviders.count > 2 {
             ScrollView {
                 providerRowsContent
             }
-            .frame(maxHeight: 390)
+            .frame(maxHeight: Self.compactScrollMaxHeight)
             .scrollIndicators(.hidden)
         } else {
             providerRowsContent

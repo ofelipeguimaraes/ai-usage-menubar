@@ -66,6 +66,12 @@ final class AppPreferences {
         }
     }
 
+    var panelSizeMode: PanelSizeMode {
+        didSet {
+            defaults.set(panelSizeMode.rawValue, forKey: Key.panelSizeMode)
+        }
+    }
+
     @ObservationIgnored
     private let defaults: UserDefaults
     @ObservationIgnored
@@ -168,6 +174,11 @@ final class AppPreferences {
             forKey: Key.refreshInterval,
             in: defaults
         ) ?? .fiveMinutes
+        panelSizeMode = Self.value(
+            PanelSizeMode.self,
+            forKey: Key.panelSizeMode,
+            in: defaults
+        ) ?? .compact
 
         if hasLegacyInstallation &&
             defaults.object(forKey: Key.hasCompletedInitialSetup) == nil {
@@ -465,5 +476,6 @@ final class AppPreferences {
         static let menuBarWindow = "menuBarWindow"
         static let usageDisplayMode = "usageDisplayMode"
         static let refreshInterval = "refreshInterval"
+        static let panelSizeMode = "panelSizeMode"
     }
 }

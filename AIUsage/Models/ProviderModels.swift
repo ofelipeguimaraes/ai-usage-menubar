@@ -594,6 +594,22 @@ enum RefreshIntervalOption: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
+enum PanelSizeMode: String, CaseIterable, Identifiable, Sendable {
+    case compact
+    case expanded
+
+    static let defaultSelection: Self = .compact
+
+    var id: Self { self }
+
+    var title: String {
+        switch self {
+        case .compact: "Compact"
+        case .expanded: "Expanded"
+        }
+    }
+}
+
 protocol UsageProvider: Sendable {
     var id: ProviderID { get }
     func fetch() async throws -> ProviderSnapshot

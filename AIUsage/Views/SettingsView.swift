@@ -161,6 +161,21 @@ struct SettingsView: View {
                     .frame(width: 180, alignment: .leading)
                 }
 
+                GridRow {
+                    Text("Panel Size")
+                        .foregroundStyle(.secondary)
+
+                    Picker("Panel Size", selection: $preferences.panelSizeMode) {
+                        ForEach(PanelSizeMode.allCases) { mode in
+                            Text(mode.title)
+                                .tag(mode)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .frame(width: 130)
+                }
+
                 GridRow(alignment: .top) {
                     Text("Startup")
                         .foregroundStyle(.secondary)

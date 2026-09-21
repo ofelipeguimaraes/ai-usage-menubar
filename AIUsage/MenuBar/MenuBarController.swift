@@ -408,9 +408,27 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                 height: .greatestFiniteMagnitude
             )
         )
+
+        let maxHeight: CGFloat
+        if let screen = statusItem?.button?.window?.screen ?? NSScreen.main {
+            let screenHeight = screen.visibleFrame.height
+            let bottomMargin: CGFloat = 16
+            maxHeight = screenHeight - bottomMargin
+        } else {
+            maxHeight = .greatestFiniteMagnitude
+        }
+
+        let height: CGFloat
+        switch preferences.panelSizeMode {
+        case .compact:
+            height = ceil(measuredSize.height)
+        case .expanded:
+            height = min(ceil(measuredSize.height), maxHeight)
+        }
+
         let contentSize = NSSize(
             width: route.width,
-            height: ceil(measuredSize.height)
+            height: height
         )
         hostingController.preferredContentSize = contentSize
         popover.contentViewController = hostingController
@@ -516,6 +534,7 @@ private struct DashboardRootView: View {
             launchAtLogin: launchAtLogin,
             usageDisplayMode: $preferences.usageDisplayMode,
             refreshInterval: $preferences.refreshInterval,
+            panelSizeMode: preferences.panelSizeMode,
             availableUpdateVersion: updateController.availableVersion,
             isCheckingForUpdates: updateController.isChecking,
             checkForUpdates: updateController.checkForUpdates,
