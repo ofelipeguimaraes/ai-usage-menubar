@@ -21,11 +21,16 @@ actor OpenCodeProvider: UsageProvider {
         
         let dbPath = NSString(string: "~/.local/share/opencode/opencode.db").expandingTildeInPath
         var usedTokens = 0
-        
-        // Use SystemProcessRunner to query the SQLite DB
+        let now = Date()
+
+        // Query only sessions created in the current calendar month (ms timestamps)
         do {
             let runner = SystemProcessRunner()
-            let query = "SELECT COALESCE(SUM(tokens_input) + SUM(tokens_output), 0) FROM session;"
+            let query = """
+                SELECT COALESCE(SUM(tokens_input) + SUM(tokens_output), 0) FROM session \
+                WHERE time_created >= strftime('%s', 'now', 'start of month') * 1000 \
+                AND time_created < strftime('%s', 'now', 'start of month', '+1 month') * 1000;
+                """
             let result = try runner.run(
                 executable: "/usr/bin/sqlite3",
                 arguments: [dbPath, query]
@@ -44,10 +49,19 @@ actor OpenCodeProvider: UsageProvider {
                 QuotaWindow(
                     kind: .totalUsage,
                     usedPercent: min((Double(usedTokens) / 2_000_000.0) * 100.0, 100.0),
-                    resetsAt: nil
+                    resetsAt: startOfNextMonth(from: now)
                 )
             ], 
-            fetchedAt: Date()
+            fetchedAt: now
         )
+    }
+
+    private func startOfNextMonth(from date: Date) -> Date? {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        guard let startOfMonth = calendar.dateInterval(of: .month, for: date)?.start else {
+            return nil
+        }
+        return calendar.date(byAdding: .month, value: 1, to: startOfMonth)
     }
 }
