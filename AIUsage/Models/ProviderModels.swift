@@ -10,6 +10,7 @@ enum ProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
     case grok
     case opencode
     case deepseek
+    case qwen
 
     var id: Self { self }
 
@@ -24,6 +25,7 @@ enum ProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .grok: "Grok"
         case .opencode: "OpenCode"
         case .deepseek: "DeepSeek"
+        case .qwen: "Qwen"
         }
     }
 
@@ -38,6 +40,7 @@ enum ProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .grok: "ProviderGrok"
         case .opencode: "ProviderOpenCode"
         case .deepseek: "ProviderDeepSeek"
+        case .qwen: "ProviderQwen"
         }
     }
 
@@ -63,6 +66,7 @@ enum ProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .grok: ["grok"]
         case .opencode: ["opencode"]
         case .deepseek: []
+        case .qwen: ["qwen"]
         }
     }
 
@@ -105,6 +109,8 @@ enum ProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
                 "~/.local/share/opencode/auth.json",
                 "~/.config/opencode/auth.json"
             ]
+        case .qwen:
+            ["~/.qwen/usage"]
         }
     }
 
@@ -114,6 +120,7 @@ enum ProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .copilot: .credits
         case .claude, .codex, .antigravity, .devin, .grok: .weekly
         case .deepseek: .balance
+        case .qwen: .fiveHour
         }
     }
 }
@@ -134,6 +141,8 @@ enum QuotaKind: String, Codable, Hashable, Sendable {
     case completions
     case claudePool
     case claudePoolWeekly
+    case fiveHour
+    case monthly
 
     var title: String {
         switch self {
@@ -152,6 +161,8 @@ enum QuotaKind: String, Codable, Hashable, Sendable {
         case .completions: "Completions"
         case .claudePool: "Claude"
         case .claudePoolWeekly: "Claude Weekly"
+        case .fiveHour: "5 Hour"
+        case .monthly: "Monthly"
         }
     }
 
@@ -172,6 +183,8 @@ enum QuotaKind: String, Codable, Hashable, Sendable {
         case .completions: .completions
         case .claudePool: .claudePool
         case .claudePoolWeekly: .claudePoolWeekly
+        case .fiveHour: .fiveHour
+        case .monthly: .monthly
         }
     }
 }
@@ -194,6 +207,8 @@ enum MenuBarMetricID: String, CaseIterable, Codable, Identifiable, Sendable {
     case extraUsage
     case credits
     case balance
+    case fiveHour
+    case monthly
 
     var id: Self { self }
 
@@ -216,6 +231,8 @@ enum MenuBarMetricID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .extraUsage: "Extra Usage"
         case .credits: "Credits"
         case .balance: "Balance"
+        case .fiveHour: "5 Hour"
+        case .monthly: "Monthly"
         }
     }
 
@@ -238,6 +255,8 @@ enum MenuBarMetricID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .extraUsage: "dollarsign.circle"
         case .credits: "creditcard"
         case .balance: "dollarsign.circle"
+        case .fiveHour: "clock.badge.exclamationmark"
+        case .monthly: "calendar"
         }
     }
 
@@ -260,6 +279,8 @@ enum MenuBarMetricID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .extraUsage: "E"
         case .credits: "C"
         case .balance: "B"
+        case .fiveHour: "5H"
+        case .monthly: "M"
         }
     }
 
@@ -282,6 +303,8 @@ enum MenuBarMetricID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .credits: .credits
         case .extraUsage: nil
         case .balance: nil
+        case .fiveHour: .fiveHour
+        case .monthly: .monthly
         }
     }
 }

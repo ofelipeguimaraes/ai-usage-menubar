@@ -58,7 +58,8 @@ final class UsageStore {
             DevinProvider(),
             GrokProvider(),
             OpenCodeProvider(),
-            DeepSeekProvider()
+            DeepSeekProvider(),
+            QwenProvider()
         ],
         availabilityChecker: any ProviderAvailabilityChecking =
             SystemProviderAvailabilityChecker(),

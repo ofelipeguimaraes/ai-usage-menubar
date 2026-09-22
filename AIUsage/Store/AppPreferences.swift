@@ -335,7 +335,8 @@ final class AppPreferences {
         .devin,
         .grok,
         .opencode,
-        .deepseek
+        .deepseek,
+        .qwen
     ]
 
     private static func hasLegacyInstallation(

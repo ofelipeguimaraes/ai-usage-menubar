@@ -33,7 +33,7 @@ enum DeepSeekUsageMapper {
 
         return ProviderSnapshot(
             provider: .deepseek,
-            planName: nil,
+            planName: "API",
             windows: [],
             billingUsage: .balance(
                 amount: total,

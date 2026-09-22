@@ -520,3 +520,63 @@ final class MapperTests: XCTestCase {
         )
     }
 }
+
+final class QwenMapperTests: XCTestCase {
+    func testMapsEmptyEntriesToZeroUsage() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let snapshot = QwenUsageMapper.map(entries: [], now: now)
+
+        XCTAssertEqual(snapshot.provider, .qwen)
+        XCTAssertEqual(snapshot.planName, "TokenPlan")
+        XCTAssertEqual(snapshot.windows.count, 3)
+        XCTAssertEqual(snapshot.windows.map(\.kind), [.fiveHour, .weekly, .monthly])
+        XCTAssertTrue(snapshot.windows.allSatisfy { $0.usedPercent == 0 })
+    }
+
+    func testCountsRequestsInFiveHourWindow() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let fiveHoursAgo = now.addingTimeInterval(-5 * 3600)
+        let entries = [
+            QwenUsageEntry(timestamp: now.addingTimeInterval(-3600)),
+            QwenUsageEntry(timestamp: now.addingTimeInterval(-7200)),
+            QwenUsageEntry(timestamp: fiveHoursAgo.addingTimeInterval(-1)),
+        ]
+
+        let snapshot = QwenUsageMapper.map(entries: entries, now: now)
+
+        let fiveHourWindow = snapshot.windows.first { $0.kind == .fiveHour }
+        XCTAssertNotNil(fiveHourWindow)
+        XCTAssertEqual(fiveHourWindow!.usedPercent, 2.0 / 6000.0 * 100, accuracy: 0.01)
+    }
+
+    func testCountsRequestsInMonthlyWindow() {
+        let now = QwenUsageMapper.monthStartUTC8(for: Date()).addingTimeInterval(86400)
+        let entries = [
+            QwenUsageEntry(timestamp: now.addingTimeInterval(-60)),
+            QwenUsageEntry(timestamp: now.addingTimeInterval(-120)),
+            QwenUsageEntry(timestamp: now.addingTimeInterval(-180)),
+        ]
+
+        let snapshot = QwenUsageMapper.map(entries: entries, now: now)
+
+        let monthlyWindow = snapshot.windows.first { $0.kind == .monthly }
+        XCTAssertNotNil(monthlyWindow)
+        XCTAssertEqual(monthlyWindow!.usedPercent, 3.0 / 90000.0 * 100, accuracy: 0.01)
+    }
+
+    func testWeekStartUTC8ReturnsMonday() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 8 * 3600)!
+        calendar.firstWeekday = 2
+
+        let wednesday = calendar.date(from: DateComponents(
+            year: 2026, month: 9, day: 23, hour: 12
+        ))!
+        let weekStart = QwenUsageMapper.weekStartUTC8(for: wednesday)
+
+        let weekday = calendar.component(.weekday, from: weekStart)
+        XCTAssertEqual(weekday, 2)
+        let hour = calendar.component(.hour, from: weekStart)
+        XCTAssertEqual(hour, 0)
+    }
+}

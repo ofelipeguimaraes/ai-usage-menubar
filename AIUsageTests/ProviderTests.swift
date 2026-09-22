@@ -234,4 +234,63 @@ final class ProviderTests: XCTestCase {
             XCTFail("Unexpected error: \(error)")
         }
     }
+
+    func testQwenFetchesUsageFromLocalFiles() async throws {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let reader = MockQwenUsageReader(entries: [
+            QwenUsageEntry(timestamp: now.addingTimeInterval(-600)),
+            QwenUsageEntry(timestamp: now.addingTimeInterval(-1200)),
+            QwenUsageEntry(timestamp: now.addingTimeInterval(-1800)),
+        ])
+        let provider = QwenProvider(
+            reader: reader,
+            dateProvider: FixedDateProvider(value: now)
+        )
+
+        let snapshot = try await provider.fetch()
+
+        XCTAssertEqual(snapshot.provider, .qwen)
+        XCTAssertEqual(snapshot.planName, "TokenPlan")
+        XCTAssertEqual(snapshot.windows.count, 3)
+        let fiveHour = snapshot.windows.first { $0.kind == .fiveHour }
+        XCTAssertNotNil(fiveHour)
+        XCTAssertEqual(fiveHour!.usedPercent, 3.0 / 6000.0 * 100, accuracy: 0.01)
+    }
+
+    func testQwenPropagatesReaderErrors() async {
+        let reader = MockQwenUsageReader(
+            throwError: ProviderFailure(.storage, "Usage directory not found.")
+        )
+        let provider = QwenProvider(
+            reader: reader,
+            dateProvider: FixedDateProvider(value: Date())
+        )
+
+        do {
+            _ = try await provider.fetch()
+            XCTFail("Expected storage failure")
+        } catch let failure as ProviderFailure {
+            XCTAssertEqual(failure.kind, .storage)
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+}
+
+private struct MockQwenUsageReader: QwenUsageReading {
+    var entries: [QwenUsageEntry] = []
+    var storedError: Error?
+
+    init(entries: [QwenUsageEntry] = []) {
+        self.entries = entries
+    }
+
+    init(throwError: Error) {
+        self.storedError = throwError
+    }
+
+    func readEntries() throws -> [QwenUsageEntry] {
+        if let error = storedError { throw error }
+        return entries
+    }
 }

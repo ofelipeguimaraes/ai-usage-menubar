@@ -160,7 +160,7 @@ final class VisualSnapshotTests: XCTestCase {
             let width = MenuBarPanelRoute.settings.width
             let size = measuredSize(of: view, width: width)
             XCTAssertEqual(size.width, width, accuracy: 0.5)
-            XCTAssertLessThan(size.height, 720)
+            XCTAssertLessThan(size.height, 800)
             XCTAssertGreaterThan(size.height, 620)
         }
 
@@ -453,6 +453,16 @@ final class VisualSnapshotTests: XCTestCase {
                 planName: "SuperGrok",
                 windows: [
                     QuotaWindow(kind: .weekly, usedPercent: 48, resetsAt: nil)
+                ],
+                fetchedAt: now
+            ),
+            .qwen: ProviderSnapshot(
+                provider: .qwen,
+                planName: "TokenPlan",
+                windows: [
+                    QuotaWindow(kind: .fiveHour, usedPercent: 35, resetsAt: now.addingTimeInterval(18_000)),
+                    QuotaWindow(kind: .weekly, usedPercent: 22, resetsAt: now.addingTimeInterval(86_400)),
+                    QuotaWindow(kind: .monthly, usedPercent: 15, resetsAt: now.addingTimeInterval(604_800))
                 ],
                 fetchedAt: now
             )
