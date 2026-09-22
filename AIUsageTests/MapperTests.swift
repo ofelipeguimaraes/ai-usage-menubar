@@ -433,6 +433,82 @@ final class MapperTests: XCTestCase {
         )
     }
 
+    func testDeepSeekMapsBalanceFromStringValues() throws {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let snapshot = try DeepSeekUsageMapper.map(
+            response: httpResponse(json: """
+            {
+              "is_available": true,
+              "balance_infos": [
+                {
+                  "currency": "USD",
+                  "total_balance": "4.84",
+                  "granted_balance": "0.00",
+                  "topped_up_balance": "4.84"
+                }
+              ]
+            }
+            """),
+            now: now
+        )
+
+        XCTAssertEqual(snapshot.provider, .deepseek)
+        XCTAssertTrue(snapshot.windows.isEmpty)
+        XCTAssertEqual(
+            snapshot.billingUsage,
+            .balance(amount: 4.84, currencyCode: "USD")
+        )
+        XCTAssertEqual(snapshot.fetchedAt, now)
+        XCTAssertEqual(
+            snapshot.availableMenuBarItems,
+            [MenuBarItemID(provider: .deepseek, metric: .balance)]
+        )
+    }
+
+    func testDeepSeekFallsBackToUSDCurrency() throws {
+        let snapshot = try DeepSeekUsageMapper.map(
+            response: httpResponse(json: """
+            {"is_available":true,"balance_infos":[{"total_balance":10}]}
+            """),
+            now: Date()
+        )
+
+        XCTAssertEqual(
+            snapshot.billingUsage,
+            .balance(amount: 10, currencyCode: "USD")
+        )
+    }
+
+    func testDeepSeekRejectsUnauthorizedKey() {
+        XCTAssertThrowsError(
+            try DeepSeekUsageMapper.map(
+                response: httpResponse(401, json: "{}"),
+                now: Date()
+            )
+        ) { error in
+            guard let failure = error as? ProviderFailure else {
+                return XCTFail("Unexpected error: \(error)")
+            }
+            XCTAssertEqual(failure.kind, .authentication)
+        }
+    }
+
+    func testDeepSeekRejectsMissingBalanceInfo() {
+        XCTAssertThrowsError(
+            try DeepSeekUsageMapper.map(
+                response: httpResponse(json: """
+                {"is_available":true,"balance_infos":[]}
+                """),
+                now: Date()
+            )
+        ) { error in
+            guard let failure = error as? ProviderFailure else {
+                return XCTFail("Unexpected error: \(error)")
+            }
+            XCTAssertEqual(failure.kind, .invalidResponse)
+        }
+    }
+
     private func claudeOAuth() -> ClaudeOAuth {
         ClaudeOAuth(
             accessToken: "token",

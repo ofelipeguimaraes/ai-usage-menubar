@@ -146,6 +146,16 @@ struct BillingUsagePresentation: Equatable {
             valueText = "\(value) · \(credits) credits left"
             accessibilityValue =
                 "\(credits) Codex credits remaining, worth \(value)"
+
+        case let .balance(amount, currencyCode):
+            let value = Self.currency(
+                amount,
+                code: currencyCode,
+                locale: locale
+            )
+            title = "Balance"
+            valueText = "\(value) left"
+            accessibilityValue = "\(value) balance left"
         }
     }
 

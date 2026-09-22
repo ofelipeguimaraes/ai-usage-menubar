@@ -9,6 +9,7 @@ enum ProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
     case devin
     case grok
     case opencode
+    case deepseek
 
     var id: Self { self }
 
@@ -22,6 +23,7 @@ enum ProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .devin: "Devin"
         case .grok: "Grok"
         case .opencode: "OpenCode"
+        case .deepseek: "DeepSeek"
         }
     }
 
@@ -35,6 +37,7 @@ enum ProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .devin: "ProviderDevin"
         case .grok: "ProviderGrok"
         case .opencode: "ProviderOpenCode"
+        case .deepseek: "ProviderDeepSeek"
         }
     }
 
@@ -59,6 +62,7 @@ enum ProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .devin: ["devin"]
         case .grok: ["grok"]
         case .opencode: ["opencode"]
+        case .deepseek: []
         }
     }
 
@@ -96,6 +100,11 @@ enum ProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
             ["~/.grok"]
         case .opencode:
             ["~/.opencode", "~/.config/opencode"]
+        case .deepseek:
+            [
+                "~/.local/share/opencode/auth.json",
+                "~/.config/opencode/auth.json"
+            ]
         }
     }
 
@@ -104,6 +113,7 @@ enum ProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .cursor, .opencode: .totalUsage
         case .copilot: .credits
         case .claude, .codex, .antigravity, .devin, .grok: .weekly
+        case .deepseek: .balance
         }
     }
 }
@@ -183,6 +193,7 @@ enum MenuBarMetricID: String, CaseIterable, Codable, Identifiable, Sendable {
     case claudePoolWeekly
     case extraUsage
     case credits
+    case balance
 
     var id: Self { self }
 
@@ -204,6 +215,7 @@ enum MenuBarMetricID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .claudePoolWeekly: "Claude Weekly"
         case .extraUsage: "Extra Usage"
         case .credits: "Credits"
+        case .balance: "Balance"
         }
     }
 
@@ -225,6 +237,7 @@ enum MenuBarMetricID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .claudePoolWeekly: "calendar.badge.clock"
         case .extraUsage: "dollarsign.circle"
         case .credits: "creditcard"
+        case .balance: "dollarsign.circle"
         }
     }
 
@@ -246,6 +259,7 @@ enum MenuBarMetricID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .claudePoolWeekly: "ClW"
         case .extraUsage: "E"
         case .credits: "C"
+        case .balance: "B"
         }
     }
 
@@ -267,6 +281,7 @@ enum MenuBarMetricID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .claudePoolWeekly: .claudePoolWeekly
         case .credits: .credits
         case .extraUsage: nil
+        case .balance: nil
         }
     }
 }
@@ -331,11 +346,16 @@ enum BillingUsage: Equatable, Sendable {
         remainingCredits: Int,
         usdValue: Double
     )
+    case balance(
+        amount: Double,
+        currencyCode: String
+    )
 
     var menuBarMetric: MenuBarMetricID {
         switch self {
         case .boundedSpend, .unboundedSpend: .extraUsage
         case .flexCreditBalance: .credits
+        case .balance: .balance
         }
     }
 
@@ -355,6 +375,8 @@ enum BillingUsage: Equatable, Sendable {
                 remaining: remainingCredits,
                 usdValue: usdValue
             )
+        case let .balance(amount, currencyCode):
+            return .money(amount: amount, currencyCode: currencyCode)
         }
     }
 }

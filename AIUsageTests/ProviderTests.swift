@@ -172,4 +172,66 @@ final class ProviderTests: XCTestCase {
         XCTAssertEqual(savedAuth.tokens?.accessToken, "new-access")
         XCTAssertEqual(savedAuth.tokens?.refreshToken, "new-refresh")
     }
+
+    func testDeepSeekFetchesBalanceWithOpenCodeAuthKey() async throws {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let files = MemoryFiles([
+            DeepSeekAuthStore.authPaths[0]: """
+            {"deepseek": {"type": "api", "key": "sk-deepseek"}}
+            """
+        ])
+        let http = MockHTTPClient([
+            httpResponse(json: """
+            {
+              "is_available": true,
+              "balance_infos": [
+                {"currency": "USD", "total_balance": "4.84"}
+              ]
+            }
+            """)
+        ])
+        let provider = DeepSeekProvider(
+            authStore: DeepSeekAuthStore(
+                files: files,
+                environment: MockEnvironment()
+            ),
+            client: DeepSeekUsageClient(http: http),
+            dateProvider: FixedDateProvider(value: now)
+        )
+
+        let snapshot = try await provider.fetch()
+
+        XCTAssertEqual(
+            snapshot.billingUsage,
+            .balance(amount: 4.84, currencyCode: "USD")
+        )
+        let requests = await http.capturedRequests()
+        XCTAssertEqual(requests.map(\.url), [DeepSeekUsageClient.balanceURL])
+        XCTAssertEqual(
+            requests.first?.headers["Authorization"],
+            "Bearer sk-deepseek"
+        )
+    }
+
+    func testDeepSeekFailsWithoutAPIKey() async {
+        let provider = DeepSeekProvider(
+            authStore: DeepSeekAuthStore(
+                files: MemoryFiles(),
+                environment: MockEnvironment()
+            ),
+            client: DeepSeekUsageClient(
+                http: MockHTTPClient([])
+            ),
+            dateProvider: FixedDateProvider(value: Date())
+        )
+
+        do {
+            _ = try await provider.fetch()
+            XCTFail("Expected authentication failure")
+        } catch let failure as ProviderFailure {
+            XCTAssertEqual(failure.kind, .authentication)
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
 }

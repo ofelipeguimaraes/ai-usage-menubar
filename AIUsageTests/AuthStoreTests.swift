@@ -148,6 +148,59 @@ final class AuthStoreTests: XCTestCase {
         )
     }
 
+    func testDeepSeekReadsKeyFromOpenCodeAuthFile() {
+        let store = DeepSeekAuthStore(
+            files: MemoryFiles([
+                DeepSeekAuthStore.authPaths[0]: """
+                {
+                  "opencode": {"type": "api", "key": "sk-zen"},
+                  "deepseek": {"type": "api", "key": "sk-deepseek"}
+                }
+                """
+            ]),
+            environment: MockEnvironment()
+        )
+
+        XCTAssertEqual(store.loadAPIKey(), "sk-deepseek")
+    }
+
+    func testDeepSeekPrefersEnvironmentVariableOverAuthFile() {
+        let store = DeepSeekAuthStore(
+            files: MemoryFiles([
+                DeepSeekAuthStore.authPaths[0]: """
+                {"deepseek": {"type": "api", "key": "sk-file"}}
+                """
+            ]),
+            environment: MockEnvironment(
+                values: ["DEEPSEEK_API_KEY": "sk-env"]
+            )
+        )
+
+        XCTAssertEqual(store.loadAPIKey(), "sk-env")
+    }
+
+    func testDeepSeekFallsBackToConfigAuthPath() {
+        let store = DeepSeekAuthStore(
+            files: MemoryFiles([
+                DeepSeekAuthStore.authPaths[1]: """
+                {"deepseek": {"type": "api", "key": "sk-config"}}
+                """
+            ]),
+            environment: MockEnvironment()
+        )
+
+        XCTAssertEqual(store.loadAPIKey(), "sk-config")
+    }
+
+    func testDeepSeekReturnsNilWithoutCredentials() {
+        let store = DeepSeekAuthStore(
+            files: MemoryFiles(),
+            environment: MockEnvironment()
+        )
+
+        XCTAssertNil(store.loadAPIKey())
+    }
+
     func testAntigravityDecodesGoKeyringTokenEnvelope() throws {
         let json = """
         {
