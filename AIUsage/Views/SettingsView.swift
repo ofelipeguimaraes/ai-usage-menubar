@@ -10,14 +10,14 @@ struct SettingsView: View {
 
     var body: some View {
         GlassEffectContainer(spacing: 10) {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 10) {
                 header
                 providersSection
                 generalSection
                 footer
             }
         }
-        .padding(20)
+        .padding(16)
         .frame(width: MenuBarPanelRoute.settings.width, alignment: .top)
         .onAppear {
             store.setTrackedProviders(preferences.trackedProviderIDs)
@@ -47,7 +47,7 @@ struct SettingsView: View {
     }
 
     private var providersSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 6) {
             sectionHeader(
                 title: "Providers",
                 systemImage: "switch.2",
@@ -130,7 +130,7 @@ struct SettingsView: View {
             Grid(
                 alignment: .leading,
                 horizontalSpacing: 18,
-                verticalSpacing: 11
+                verticalSpacing: 8
             ) {
                 GridRow {
                     Text("Numbers")
@@ -250,7 +250,7 @@ private struct ProviderSettingsHeader: View {
         .font(.caption)
         .foregroundStyle(.secondary)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, 7)
+        .padding(.vertical, 5)
     }
 }
 
@@ -325,7 +325,7 @@ private struct ProviderSettingsRow: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.vertical, 9)
+        .padding(.vertical, 5)
         .accessibilityElement(children: .contain)
     }
 

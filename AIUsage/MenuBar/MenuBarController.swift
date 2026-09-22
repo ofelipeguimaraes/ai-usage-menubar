@@ -421,7 +421,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         let height: CGFloat
         switch preferences.panelSizeMode {
         case .compact:
-            height = ceil(measuredSize.height)
+            height = min(ceil(measuredSize.height), maxHeight)
         case .expanded:
             height = min(ceil(measuredSize.height), maxHeight)
         }
