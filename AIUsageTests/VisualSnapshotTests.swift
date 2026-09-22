@@ -183,7 +183,7 @@ final class VisualSnapshotTests: XCTestCase {
 
         XCTAssertEqual(size.width, panelWidth - 20, accuracy: 0.5)
         XCTAssertLessThan(size.height, 200)
-        XCTAssertGreaterThan(size.height, 130)
+        XCTAssertGreaterThan(size.height, 110)
     }
 
     func testBillingUsagePresentationKeepsProviderSemanticsDistinct() {

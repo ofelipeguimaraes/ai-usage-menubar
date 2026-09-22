@@ -24,7 +24,7 @@ struct ProviderSectionView: View {
                         displayMode: displayMode
                     )
                     .padding(.horizontal, 10)
-                    .padding(.bottom, 6)
+                    .padding(.bottom, 4)
                 }
                 if let billingUsage = snapshot.billingUsage {
                     BillingUsageRow(
@@ -84,8 +84,8 @@ struct ProviderSectionView: View {
             }
         }
         .padding(.horizontal, 14)
-        .padding(.top, 10)
-        .padding(.bottom, 6)
+        .padding(.top, 8)
+        .padding(.bottom, 4)
     }
 }
 
@@ -225,24 +225,11 @@ private struct QuotaGrid: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            ForEach(Array(rows.enumerated()), id: \.offset) { rowIndex, row in
-                HStack(spacing: 0) {
-                    ForEach(Array(row.enumerated()), id: \.element.id) { columnIndex, window in
+            ForEach(rows.indices, id: \.self) { rowIndex in
+                HStack(alignment: .top, spacing: 0) {
+                    ForEach(rows[rowIndex]) { window in
                         QuotaTile(window: window, displayMode: displayMode)
-
-                        if columnIndex == 0, row.count == 2 {
-                            Color(nsColor: .separatorColor)
-                                .opacity(0.42)
-                                .frame(width: 0.5, height: 48)
-                        }
                     }
-                }
-
-                if rowIndex < rows.count - 1 {
-                    Color(nsColor: .separatorColor)
-                        .opacity(0.42)
-                        .frame(height: 0.5)
-                        .padding(.horizontal, 6)
                 }
             }
         }
@@ -261,7 +248,7 @@ private struct QuotaTile: View {
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 60)) { context in
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text(window.kind.title)
                         .font(.caption.weight(.medium))
@@ -309,8 +296,8 @@ private struct QuotaTile: View {
                 }
             }
             .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .frame(maxWidth: .infinity, minHeight: 60, alignment: .topLeading)
+            .padding(.vertical, 4)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(window.kind.title)
             .accessibilityValue(accessibilityValue(relativeTo: context.date))

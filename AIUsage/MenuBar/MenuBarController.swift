@@ -124,7 +124,6 @@ enum MenuBarStatusImageRenderer {
                     microLabelRaise
             )
         )
-
         let image = NSImage(
             size: NSSize(width: ceil(width), height: ceil(height)),
             flipped: false
@@ -254,7 +253,28 @@ enum MenuBarPanelRoute: Equatable {
 }
 
 @MainActor
-final class MenuBarController: NSObject, NSPopoverDelegate {
+private final class MenuBarPanelWindow: NSPanel {
+    init(contentSize: NSSize) {
+        super.init(
+            contentRect: NSRect(origin: .zero, size: contentSize),
+            styleMask: [.borderless, .nonactivatingPanel],
+            backing: .buffered,
+            defer: false
+        )
+        isOpaque = false
+        backgroundColor = .clear
+        hasShadow = true
+        level = .statusBar
+        isMovableByWindowBackground = false
+        collectionBehavior = [.fullScreenAuxiliary]
+    }
+
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { false }
+}
+
+@MainActor
+final class MenuBarController: NSObject {
     private let store: UsageStore
     private let preferences: AppPreferences
     private let launchAtLogin: LaunchAtLoginController
@@ -263,10 +283,13 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private let application: any ApplicationActivating
 
     private var statusItem: NSStatusItem?
-    private var popover: NSPopover?
+    private var panel: MenuBarPanelWindow?
     private var panelRoute: MenuBarPanelRoute = .dashboard
     private var isStarted = false
     private var toggleGate = PanelToggleGate()
+    private var globalClickMonitor: Any?
+    private var localKeyMonitor: Any?
+    private var panelObservers: [NSObjectProtocol] = []
 
     init(
         store: UsageStore,
@@ -310,8 +333,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         guard isStarted else { return }
         isStarted = false
         store.stop()
-        popover?.performClose(nil)
-        releasePanel()
+        closePanel()
 
         if let statusItem {
             statusBar.removeStatusItem(statusItem)
@@ -323,8 +345,8 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private func togglePanel(_ sender: Any?) {
         guard !toggleGate.consumeSuppression() else { return }
 
-        if popover?.isShown == true {
-            popover?.performClose(sender)
+        if panel?.isVisible == true {
+            closePanel()
         } else {
             showPanel(route: .dashboard)
         }
@@ -343,33 +365,30 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private func showPanel(route: MenuBarPanelRoute) {
         guard let button = statusItem?.button else { return }
 
-        if let popover, popover.isShown {
+        if let panel, panel.isVisible {
             guard panelRoute != route else { return }
-            installContent(for: route, in: popover)
+            installContent(for: route, in: panel, below: button)
             return
         }
 
-        let popover = NSPopover()
-        popover.behavior = .transient
-        popover.animates = true
-        popover.delegate = self
-        self.popover = popover
+        let panel = MenuBarPanelWindow(
+            contentSize: NSSize(width: route.width, height: 320)
+        )
+        self.panel = panel
 
         // Status-item clicks do not activate an LSUIElement app automatically.
         // Activate first so Liquid Glass resolves its active appearance.
         application.activate()
-        installContent(for: route, in: popover)
-        popover.show(
-            relativeTo: button.bounds,
-            of: button,
-            preferredEdge: .minY
-        )
-        popover.contentViewController?.view.window?.makeKey()
+        installContent(for: route, in: panel, below: button)
+        panel.orderFront(nil)
+        panel.makeKey()
+        installPanelDismissal(for: panel)
     }
 
     private func installContent(
         for route: MenuBarPanelRoute,
-        in popover: NSPopover
+        in panel: MenuBarPanelWindow,
+        below button: NSStatusBarButton
     ) {
         let rootView: AnyView
         switch route {
@@ -399,7 +418,12 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             )
         }
 
-        let hostingController = NSHostingController(rootView: rootView)
+        let hostingController = NSHostingController(
+            rootView: rootView.glassEffect(
+                .regular,
+                in: .rect(cornerRadius: 22)
+            )
+        )
         hostingController.sizingOptions = [.preferredContentSize]
 
         let measuredSize = hostingController.sizeThatFits(
@@ -431,27 +455,122 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             height: height
         )
         hostingController.preferredContentSize = contentSize
-        popover.contentViewController = hostingController
-        popover.contentSize = contentSize
+        panel.contentViewController = hostingController
+
+        // The hosting view's layer fills the window rect; without a clear
+        // background and rounded mask its square corners peek out behind
+        // the glass shape.
+        let hostingView = hostingController.view
+        hostingView.wantsLayer = true
+        hostingView.layer?.backgroundColor = NSColor.clear.cgColor
+        hostingView.layer?.cornerRadius = 22
+        hostingView.layer?.masksToBounds = true
+
+        panel.setContentSize(contentSize)
+        position(panel, below: button)
         panelRoute = route
     }
 
-    func popoverDidClose(_ notification: Notification) {
-        guard let closedPopover = notification.object as? NSPopover,
-              closedPopover === popover else {
+    // Anchors the panel straight below the status item, clamped to the screen,
+    // so it never offsets sideways like a popover arrow would.
+    private func position(
+        _ panel: MenuBarPanelWindow,
+        below button: NSStatusBarButton
+    ) {
+        guard let buttonWindow = button.window,
+              let screen = buttonWindow.screen ?? NSScreen.main else {
             return
         }
-        toggleGate.panelDidClose()
-        releasePanel()
-        DispatchQueue.main.async { [weak self] in
-            self?.toggleGate.clearSuppression()
+        var frame = panel.frame
+        let gap: CGFloat = 6
+        let minX = screen.frame.minX + 4
+        let maxX = max(minX, screen.frame.maxX - 4 - frame.width)
+        let x = min(
+            max(buttonWindow.frame.midX - frame.width / 2, minX),
+            maxX
+        )
+        let y = min(
+            max(
+                buttonWindow.frame.minY - gap - frame.height,
+                screen.frame.minY + 4
+            ),
+            screen.frame.maxY - gap - frame.height
+        )
+        frame.origin = NSPoint(x: x, y: y)
+        panel.setFrame(frame, display: true)
+    }
+
+    private func installPanelDismissal(for panel: MenuBarPanelWindow) {
+        globalClickMonitor = NSEvent.addGlobalMonitorForEvents(
+            matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]
+        ) { [weak self] _ in
+            Task { @MainActor in
+                guard let self, let panel = self.panel,
+                      panel.isVisible,
+                      !panel.frame.contains(NSEvent.mouseLocation) else {
+                    return
+                }
+                self.closePanel()
+            }
         }
+        localKeyMonitor = NSEvent.addLocalMonitorForEvents(
+            matching: .keyDown
+        ) { [weak self] event in
+            guard event.keyCode == 53 else { return event }
+            Task { @MainActor in self?.closePanel() }
+            return nil
+        }
+        panelObservers.append(
+            NotificationCenter.default.addObserver(
+                forName: NSWindow.didResignKeyNotification,
+                object: panel,
+                queue: .main
+            ) { [weak self] _ in
+                Task { @MainActor in self?.closePanel() }
+            }
+        )
+        panelObservers.append(
+            NotificationCenter.default.addObserver(
+                forName: NSWorkspace.activeSpaceDidChangeNotification,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                Task { @MainActor in self?.closePanel() }
+            }
+        )
+    }
+
+    private func closePanel() {
+        guard let panel else { return }
+        removePanelDismissal()
+        if panel.isVisible {
+            panel.orderOut(nil)
+            toggleGate.panelDidClose()
+            DispatchQueue.main.async { [weak self] in
+                self?.toggleGate.clearSuppression()
+            }
+        }
+        releasePanel()
+    }
+
+    private func removePanelDismissal() {
+        if let globalClickMonitor {
+            NSEvent.removeMonitor(globalClickMonitor)
+            self.globalClickMonitor = nil
+        }
+        if let localKeyMonitor {
+            NSEvent.removeMonitor(localKeyMonitor)
+            self.localKeyMonitor = nil
+        }
+        for observer in panelObservers {
+            NotificationCenter.default.removeObserver(observer)
+        }
+        panelObservers = []
     }
 
     private func releasePanel() {
-        popover?.delegate = nil
-        popover?.contentViewController = nil
-        popover = nil
+        panel?.contentViewController = nil
+        panel = nil
         panelRoute = .dashboard
     }
 

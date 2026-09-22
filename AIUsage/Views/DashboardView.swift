@@ -153,7 +153,7 @@ struct DashboardContentView: View {
     private static let compactScrollMaxHeight: CGFloat = 390
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 6) {
             header
             providerRows
         }
@@ -175,7 +175,7 @@ struct DashboardContentView: View {
     }
 
     private var providerRowsContent: some View {
-        LazyVStack(spacing: 8) {
+        LazyVStack(spacing: 6) {
             ForEach(visibleProviders) { provider in
                 if let state = store.states[provider] {
                     ProviderSectionView(
