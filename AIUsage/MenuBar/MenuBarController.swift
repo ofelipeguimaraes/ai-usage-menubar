@@ -336,7 +336,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         showPanel(route: .settings)
     }
 
-    private func showDashboard() {
+    func showDashboard() {
         showPanel(route: .dashboard)
     }
 

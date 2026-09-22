@@ -58,6 +58,11 @@ final class AIUsageAppDelegate: NSObject, NSApplicationDelegate {
         menuBarController = nil
     }
 
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        menuBarController?.showDashboard()
+        return true
+    }
+
     @objc
     private func openSettings(_ sender: Any?) {
         menuBarController?.showSettings()
