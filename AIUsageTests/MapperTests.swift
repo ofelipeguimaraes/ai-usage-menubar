@@ -1,3 +1,4 @@
+import CryptoKit
 import XCTest
 @testable import AIUsage
 
@@ -522,61 +523,95 @@ final class MapperTests: XCTestCase {
 }
 
 final class QwenMapperTests: XCTestCase {
-    func testMapsEmptyEntriesToZeroUsage() {
+    func testMapsAllReportedWindowsWithResets() throws {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
-        let snapshot = QwenUsageMapper.map(entries: [], now: now)
+        let usage = try QwenUsageMapper.payload(from: httpResponse(json: qwenGatewayJSON("""
+            {"per5HourPercentage":0.5,"per5HourResetTime":1800003600000,
+             "per1WeekPercentage":0.1,
+             "per1MonthPercentage":0.0669,"per1MonthResetTime":1792684800000}
+            """)))
+
+        let snapshot = try QwenUsageMapper.map(
+            usage: usage,
+            subscription: ["specCode": "essential"],
+            now: now
+        )
 
         XCTAssertEqual(snapshot.provider, .qwen)
-        XCTAssertEqual(snapshot.planName, "TokenPlan")
-        XCTAssertEqual(snapshot.windows.count, 3)
+        XCTAssertEqual(snapshot.planName, "Essential")
         XCTAssertEqual(snapshot.windows.map(\.kind), [.fiveHour, .weekly, .monthly])
-        XCTAssertTrue(snapshot.windows.allSatisfy { $0.usedPercent == 0 })
+        XCTAssertEqual(snapshot.windows[0].usedPercent, 50, accuracy: 0.001)
+        XCTAssertEqual(
+            snapshot.windows[0].resetsAt,
+            Date(timeIntervalSince1970: 1_800_003_600)
+        )
+        XCTAssertNil(snapshot.windows[1].resetsAt)
+        XCTAssertEqual(snapshot.windows[2].usedPercent, 6.69, accuracy: 0.001)
+        XCTAssertEqual(
+            snapshot.windows[2].resetsAt,
+            Date(timeIntervalSince1970: 1_792_684_800)
+        )
     }
 
-    func testCountsRequestsInFiveHourWindow() {
-        let now = Date(timeIntervalSince1970: 1_800_000_000)
-        let fiveHoursAgo = now.addingTimeInterval(-5 * 3600)
-        let entries = [
-            QwenUsageEntry(timestamp: now.addingTimeInterval(-3600)),
-            QwenUsageEntry(timestamp: now.addingTimeInterval(-7200)),
-            QwenUsageEntry(timestamp: fiveHoursAgo.addingTimeInterval(-1)),
-        ]
-
-        let snapshot = QwenUsageMapper.map(entries: entries, now: now)
-
-        let fiveHourWindow = snapshot.windows.first { $0.kind == .fiveHour }
-        XCTAssertNotNil(fiveHourWindow)
-        XCTAssertEqual(fiveHourWindow!.usedPercent, 2.0 / 6000.0 * 100, accuracy: 0.01)
+    func testRejectsUsageWithoutAnyWindow() {
+        XCTAssertThrowsError(
+            try QwenUsageMapper.map(usage: [:], subscription: nil, now: Date())
+        ) { error in
+            XCTAssertEqual((error as? ProviderFailure)?.kind, .invalidResponse)
+        }
     }
 
-    func testCountsRequestsInMonthlyWindow() {
-        let now = QwenUsageMapper.monthStartUTC8(for: Date()).addingTimeInterval(86400)
-        let entries = [
-            QwenUsageEntry(timestamp: now.addingTimeInterval(-60)),
-            QwenUsageEntry(timestamp: now.addingTimeInterval(-120)),
-            QwenUsageEntry(timestamp: now.addingTimeInterval(-180)),
-        ]
+    func testTreatsLoginRedirectAsExpiredSession() {
+        let response = httpResponse(json: #"{"code":"ConsoleNeedLogin","data":null}"#)
 
-        let snapshot = QwenUsageMapper.map(entries: entries, now: now)
-
-        let monthlyWindow = snapshot.windows.first { $0.kind == .monthly }
-        XCTAssertNotNil(monthlyWindow)
-        XCTAssertEqual(monthlyWindow!.usedPercent, 3.0 / 90000.0 * 100, accuracy: 0.01)
+        XCTAssertThrowsError(try QwenUsageMapper.payload(from: response)) { error in
+            XCTAssertEqual((error as? ProviderFailure)?.kind, .authentication)
+        }
+        XCTAssertThrowsError(try QwenUsageMapper.secToken(from: response)) { error in
+            XCTAssertEqual((error as? ProviderFailure)?.kind, .authentication)
+        }
     }
 
-    func testWeekStartUTC8ReturnsMonday() {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(secondsFromGMT: 8 * 3600)!
-        calendar.firstWeekday = 2
+    func testTreatsUnauthorizedStatusAsExpiredSession() {
+        XCTAssertThrowsError(
+            try QwenUsageMapper.payload(from: httpResponse(401))
+        ) { error in
+            XCTAssertEqual((error as? ProviderFailure)?.kind, .authentication)
+        }
+    }
+}
 
-        let wednesday = calendar.date(from: DateComponents(
-            year: 2026, month: 9, day: 23, hour: 12
-        ))!
-        let weekStart = QwenUsageMapper.weekStartUTC8(for: wednesday)
+final class ChromiumCookieReaderTests: XCTestCase {
+    func testDecryptsValueAndStripsHostDigest() throws {
+        let key = ChromiumCookieReader.deriveKey(password: "peanuts")
+        let hostKey = ".qwencloud.com"
+        var plain = Data(SHA256.hash(data: Data(hostKey.utf8)))
+        plain.append(Data("ticket-value".utf8))
+        var encrypted = Data("v10".utf8)
+        encrypted.append(try XCTUnwrap(ChromiumCookieReader.aesEncrypt(plain, key: key)))
 
-        let weekday = calendar.component(.weekday, from: weekStart)
-        XCTAssertEqual(weekday, 2)
-        let hour = calendar.component(.hour, from: weekStart)
-        XCTAssertEqual(hour, 0)
+        let value = ChromiumCookieReader.decrypt(
+            ChromiumCookieReader.RawCookie(
+                hostKey: hostKey,
+                name: "login_qwencloud_ticket",
+                value: "",
+                encryptedValue: encrypted,
+                lastAccess: 0
+            ),
+            key: key
+        )
+
+        XCTAssertEqual(value, "ticket-value")
+    }
+
+    func testCookieDomainMatching() {
+        let shared = BrowserCookie(hostKey: ".qwencloud.com", name: "a", value: "1")
+        let hostOnly = BrowserCookie(hostKey: "home.qwencloud.com", name: "b", value: "2")
+
+        XCTAssertTrue(shared.matches(host: "cs-data.qwencloud.com"))
+        XCTAssertTrue(shared.matches(host: "qwencloud.com"))
+        XCTAssertTrue(hostOnly.matches(host: "home.qwencloud.com"))
+        XCTAssertFalse(hostOnly.matches(host: "cs-data.qwencloud.com"))
+        XCTAssertFalse(shared.matches(host: "evilqwencloud.com"))
     }
 }

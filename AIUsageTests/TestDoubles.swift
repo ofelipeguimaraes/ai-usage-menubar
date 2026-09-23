@@ -182,3 +182,9 @@ private extension Data {
             .replacingOccurrences(of: "=", with: "")
     }
 }
+
+func qwenGatewayJSON(_ payload: String) -> String {
+    """
+    {"code":"200","data":{"DataV2":{"data":{"code":"SUCCESS","data":\(payload)}}}}
+    """
+}

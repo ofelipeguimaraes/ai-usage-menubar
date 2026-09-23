@@ -120,7 +120,7 @@ enum ProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .copilot: .credits
         case .claude, .codex, .antigravity, .devin, .grok: .weekly
         case .deepseek: .balance
-        case .qwen: .fiveHour
+        case .qwen: .monthly
         }
     }
 }

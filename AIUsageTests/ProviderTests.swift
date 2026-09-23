@@ -235,62 +235,110 @@ final class ProviderTests: XCTestCase {
         }
     }
 
-    func testQwenFetchesUsageFromLocalFiles() async throws {
+    func testQwenFetchesTokenPlanUsageFromConsoleSession() async throws {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
-        let reader = MockQwenUsageReader(entries: [
-            QwenUsageEntry(timestamp: now.addingTimeInterval(-600)),
-            QwenUsageEntry(timestamp: now.addingTimeInterval(-1200)),
-            QwenUsageEntry(timestamp: now.addingTimeInterval(-1800)),
+        let http = MockHTTPClient([
+            httpResponse(json: #"{"code":"200","data":{"secToken":"sec-123"}}"#),
+            httpResponse(json: qwenGatewayJSON(
+                #"{"per1MonthPercentage":0.0669,"per1MonthResetTime":1792684800000}"#
+            )),
+            httpResponse(json: qwenGatewayJSON(
+                #"{"specCode":"essential","remainingDays":29}"#
+            ))
         ])
         let provider = QwenProvider(
-            reader: reader,
+            authStore: QwenAuthStore(cookies: MockBrowserCookieReader(
+                session: qwenSession
+            )),
+            client: QwenUsageClient(http: http),
             dateProvider: FixedDateProvider(value: now)
         )
 
         let snapshot = try await provider.fetch()
 
-        XCTAssertEqual(snapshot.provider, .qwen)
-        XCTAssertEqual(snapshot.planName, "TokenPlan")
-        XCTAssertEqual(snapshot.windows.count, 3)
-        let fiveHour = snapshot.windows.first { $0.kind == .fiveHour }
-        XCTAssertNotNil(fiveHour)
-        XCTAssertEqual(fiveHour!.usedPercent, 3.0 / 6000.0 * 100, accuracy: 0.01)
+        XCTAssertEqual(snapshot.planName, "Essential")
+        XCTAssertEqual(snapshot.windows.map(\.kind), [.monthly])
+        XCTAssertEqual(snapshot.windows[0].usedPercent, 6.69, accuracy: 0.001)
+
+        let requests = await http.capturedRequests()
+        XCTAssertEqual(requests.count, 3)
+        XCTAssertEqual(requests[0].url, QwenUsageClient.userInfoURL)
+        XCTAssertEqual(
+            requests[1].headers["Cookie"],
+            "login_qwencloud_ticket=ticket; login_aliyunid_csrf=csrf-token"
+        )
+        XCTAssertEqual(requests[1].headers["x-csrf-token"], "csrf-token")
+        let body = String(decoding: requests[1].body ?? Data(), as: UTF8.self)
+        XCTAssertTrue(body.contains("sec_token=sec-123"))
+        XCTAssertTrue(requests[1].url.absoluteString.contains("tokenplan"))
     }
 
-    func testQwenPropagatesReaderErrors() async {
-        let reader = MockQwenUsageReader(
-            throwError: ProviderFailure(.storage, "Usage directory not found.")
-        )
+    func testQwenKeepsUsageWhenSubscriptionLookupFails() async throws {
+        let http = MockHTTPClient([
+            httpResponse(json: #"{"code":"200","data":{"secToken":"sec-123"}}"#),
+            httpResponse(json: qwenGatewayJSON(#"{"per5HourPercentage":0.25}"#)),
+            httpResponse(500)
+        ])
         let provider = QwenProvider(
-            reader: reader,
+            authStore: QwenAuthStore(cookies: MockBrowserCookieReader(
+                session: qwenSession
+            )),
+            client: QwenUsageClient(http: http),
+            dateProvider: FixedDateProvider(value: Date())
+        )
+
+        let snapshot = try await provider.fetch()
+
+        XCTAssertEqual(snapshot.planName, QwenUsageMapper.defaultPlanName)
+        XCTAssertEqual(snapshot.windows.map(\.kind), [.fiveHour])
+    }
+
+    func testQwenRequiresBrowserSession() async {
+        let provider = QwenProvider(
+            authStore: QwenAuthStore(cookies: MockBrowserCookieReader(session: nil)),
+            client: QwenUsageClient(http: MockHTTPClient([])),
             dateProvider: FixedDateProvider(value: Date())
         )
 
         do {
             _ = try await provider.fetch()
-            XCTFail("Expected storage failure")
+            XCTFail("Expected authentication failure")
         } catch let failure as ProviderFailure {
-            XCTAssertEqual(failure.kind, .storage)
+            XCTAssertEqual(failure.kind, .authentication)
         } catch {
             XCTFail("Unexpected error: \(error)")
         }
     }
 }
 
-private struct MockQwenUsageReader: QwenUsageReading {
-    var entries: [QwenUsageEntry] = []
-    var storedError: Error?
+private let qwenSession = BrowserCookieSession(
+    browser: "Brave",
+    cookies: [
+        BrowserCookie(
+            hostKey: ".qwencloud.com",
+            name: "login_qwencloud_ticket",
+            value: "ticket"
+        ),
+        BrowserCookie(
+            hostKey: ".qwencloud.com",
+            name: "login_aliyunid_csrf",
+            value: "csrf-token"
+        ),
+        BrowserCookie(
+            hostKey: "account.qwencloud.com",
+            name: "account_only",
+            value: "ignored"
+        )
+    ]
+)
 
-    init(entries: [QwenUsageEntry] = []) {
-        self.entries = entries
-    }
+private struct MockBrowserCookieReader: BrowserCookieReading {
+    let session: BrowserCookieSession?
 
-    init(throwError: Error) {
-        self.storedError = throwError
-    }
-
-    func readEntries() throws -> [QwenUsageEntry] {
-        if let error = storedError { throw error }
-        return entries
+    func session(
+        domainSuffixes: [String],
+        requiredNames: Set<String>
+    ) throws -> BrowserCookieSession? {
+        session
     }
 }
