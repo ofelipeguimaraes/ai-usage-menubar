@@ -257,7 +257,14 @@ final class UsageStore {
                 return nil
             }
 
-            let items = configuration.metrics.map {
+            // Saved selections can outlive a metric the provider no longer
+            // reports; drop those so a lone value doesn't get a label.
+            var metrics = configuration.metrics
+            if let snapshot = state.snapshot {
+                let available = Set(snapshot.availableMenuBarItems.map(\.metric))
+                metrics = metrics.filter(available.contains)
+            }
+            let items = metrics.map {
                 MenuBarItemID(
                     provider: configuration.provider,
                     metric: $0
@@ -265,7 +272,7 @@ final class UsageStore {
             }
             return MenuBarProviderReadings(
                 provider: configuration.provider,
-                selectedMetrics: configuration.metrics,
+                selectedMetrics: metrics,
                 readings: menuBarReadings(
                     for: items,
                     displayMode: displayMode

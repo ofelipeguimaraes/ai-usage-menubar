@@ -464,6 +464,41 @@ final class UsageStoreTests: XCTestCase {
         )
     }
 
+    func testMenuBarIgnoresSelectedMetricsTheProviderNoLongerReports() async {
+        let store = UsageStore(
+            providers: [
+                SequencedProvider(
+                    id: .qwen,
+                    results: [.success(ProviderSnapshot(
+                        provider: .qwen,
+                        planName: "Essential",
+                        windows: [QuotaWindow(
+                            kind: .monthly,
+                            usedPercent: 6.7,
+                            resetsAt: nil
+                        )],
+                        fetchedAt: Date()
+                    ))]
+                )
+            ],
+            availabilityChecker: FixedProviderAvailabilityChecker(
+                installed: [.qwen]
+            )
+        )
+
+        await store.refresh()
+
+        let groups = store.menuBarProviderReadings(for: [
+            MenuBarProviderConfiguration(
+                provider: .qwen,
+                metrics: [.fiveHour, .weekly, .monthly]
+            )
+        ])
+        XCTAssertEqual(groups.first?.selectedMetrics, [.monthly])
+        XCTAssertEqual(groups.first?.readings.map(\.metric), [.monthly])
+        XCTAssertEqual(groups.first?.showsMetricLabels, false)
+    }
+
     func testRefreshIntervalCanBeChangedWithoutRecreatingTheStore() {
         let store = UsageStore(
             providers: [],
