@@ -13,6 +13,7 @@ enum ProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
     case qwen
     case kimi
     case minimax
+    case zai
 
     var id: Self { self }
 
@@ -30,6 +31,7 @@ enum ProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .qwen: "Qwen"
         case .kimi: "Kimi"
         case .minimax: "MiniMax"
+        case .zai: "GLM"
         }
     }
 
@@ -47,6 +49,7 @@ enum ProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .qwen: "ProviderQwen"
         case .kimi: "ProviderKimi"
         case .minimax: "ProviderMiniMax"
+        case .zai: "ProviderZai"
         }
     }
 
@@ -74,7 +77,7 @@ enum ProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .deepseek: []
         case .qwen: ["qwen"]
         case .kimi: ["kimi"]
-        case .minimax: []
+        case .minimax, .zai: []
         }
     }
 
@@ -121,7 +124,7 @@ enum ProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
             ["~/.qwen/usage"]
         case .kimi:
             ["~/.kimi-code/bin/kimi", "~/.kimi-code/credentials", "~/.kimi"]
-        case .minimax:
+        case .minimax, .zai:
             ["~/.local/share/opencode/auth.json", "~/.config/opencode/auth.json"]
         }
     }
@@ -130,7 +133,7 @@ enum ProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
         switch self {
         case .cursor, .opencode: .totalUsage
         case .copilot: .credits
-        case .claude, .codex, .antigravity, .devin, .grok, .minimax: .weekly
+        case .claude, .codex, .antigravity, .devin, .grok, .minimax, .zai: .weekly
         case .deepseek: .balance
         case .qwen, .kimi: .monthly
         }
@@ -156,6 +159,7 @@ enum QuotaKind: String, Codable, Hashable, Sendable {
     case fiveHour
     case monthly
     case codeMonthly
+    case mcpMonthly
 
     var title: String {
         switch self {
@@ -177,6 +181,7 @@ enum QuotaKind: String, Codable, Hashable, Sendable {
         case .fiveHour: "5 Hour"
         case .monthly: "Monthly"
         case .codeMonthly: "Code Monthly"
+        case .mcpMonthly: "MCP Monthly"
         }
     }
 
@@ -200,6 +205,7 @@ enum QuotaKind: String, Codable, Hashable, Sendable {
         case .fiveHour: .fiveHour
         case .monthly: .monthly
         case .codeMonthly: .codeMonthly
+        case .mcpMonthly: .mcpMonthly
         }
     }
 }
@@ -225,6 +231,7 @@ enum MenuBarMetricID: String, CaseIterable, Codable, Identifiable, Sendable {
     case fiveHour
     case monthly
     case codeMonthly
+    case mcpMonthly
 
     var id: Self { self }
 
@@ -250,6 +257,7 @@ enum MenuBarMetricID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .fiveHour: "5 Hour"
         case .monthly: "Monthly"
         case .codeMonthly: "Code Monthly"
+        case .mcpMonthly: "MCP Monthly"
         }
     }
 
@@ -275,6 +283,7 @@ enum MenuBarMetricID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .fiveHour: "clock.badge.exclamationmark"
         case .monthly: "calendar"
         case .codeMonthly: "terminal"
+        case .mcpMonthly: "wrench.and.screwdriver"
         }
     }
 
@@ -300,6 +309,7 @@ enum MenuBarMetricID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .fiveHour: "5H"
         case .monthly: "M"
         case .codeMonthly: "CM"
+        case .mcpMonthly: "MCP"
         }
     }
 
@@ -325,6 +335,7 @@ enum MenuBarMetricID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .fiveHour: .fiveHour
         case .monthly: .monthly
         case .codeMonthly: .codeMonthly
+        case .mcpMonthly: .mcpMonthly
         }
     }
 }

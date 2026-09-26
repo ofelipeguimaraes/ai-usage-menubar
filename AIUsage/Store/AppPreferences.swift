@@ -100,6 +100,10 @@ final class AppPreferences {
             initialTrackedProviders.insert(.minimax)
         }
         defaults.set(true, forKey: Key.miniMaxProviderAdded)
+        if defaults.object(forKey: Key.zaiProviderAdded) == nil {
+            initialTrackedProviders.insert(.zai)
+        }
+        defaults.set(true, forKey: Key.zaiProviderAdded)
         trackedProviderIDs = initialTrackedProviders
         defaults.set(
             Self.encode(Array(initialTrackedProviders).sorted { $0.rawValue < $1.rawValue }),
@@ -350,7 +354,8 @@ final class AppPreferences {
         .deepseek,
         .qwen,
         .kimi,
-        .minimax
+        .minimax,
+        .zai
     ]
 
     private static func hasLegacyInstallation(
@@ -486,6 +491,7 @@ final class AppPreferences {
         static let previousConfiguredMenuBarItems =
             "menuBarItemsConfigured.v1"
         static let hasCompletedInitialSetup = "initialSettingsCompleted.v1"
+        static let zaiProviderAdded = "zaiProviderAdded.v1"
         static let miniMaxProviderAdded = "miniMaxProviderAdded.v1"
         static let kimiProviderAdded = "kimiProviderAdded.v1"
         static let openUsageProvidersAdded =

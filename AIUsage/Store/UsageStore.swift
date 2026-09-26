@@ -61,7 +61,8 @@ final class UsageStore {
             DeepSeekProvider(),
             QwenProvider(),
             KimiProvider(),
-            MiniMaxProvider()
+            MiniMaxProvider(),
+            ZaiProvider()
         ],
         availabilityChecker: any ProviderAvailabilityChecking =
             SystemProviderAvailabilityChecker(),

@@ -24,6 +24,7 @@ final class LoginShellEnvironment: @unchecked Sendable {
         "CODEX_HOME",
         "KIMI_CODE_HOME",
         "KIMI_SHARE_DIR",
+        "ZAI_API_KEY",
         "MINIMAX_API_KEY",
         "MINIMAX_CN_API_KEY",
         "XDG_DATA_HOME",
@@ -126,6 +127,7 @@ struct SystemProviderAvailabilityChecker: ProviderAvailabilityChecking {
             let path = environment.value(for: "PATH") ?? ""
 
             return Set(ProviderID.allCases.filter { provider in
+                if provider == .zai { return ZaiAuthStore().load() != nil }
                 if provider == .minimax { return MiniMaxAuthStore().load() != nil }
                 let descriptor = provider.descriptor
                 return descriptor.executableNames.contains {

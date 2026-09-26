@@ -456,6 +456,12 @@ final class VisualSnapshotTests: XCTestCase {
                 ],
                 fetchedAt: now
             ),
+            .zai: ProviderSnapshot(
+                provider: .zai, planName: "Lite",
+                windows: [QuotaWindow(kind: .fiveHour, usedPercent: 1, resetsAt: now),
+                          QuotaWindow(kind: .weekly, usedPercent: 10, resetsAt: now)],
+                fetchedAt: now
+            ),
             .minimax: ProviderSnapshot(
                 provider: .minimax,
                 planName: "Plus",
