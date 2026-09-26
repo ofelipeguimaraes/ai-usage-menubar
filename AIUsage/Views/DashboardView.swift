@@ -66,17 +66,6 @@ struct DashboardView: View {
 
             Spacer()
 
-            if let version = availableUpdateVersion {
-                Button(action: checkForUpdates) {
-                    Label("Update", systemImage: "arrow.down.circle.fill")
-                }
-                .buttonStyle(.glassProminent)
-                .tint(UsagePalette.accent)
-                .controlSize(.small)
-                .disabled(isCheckingForUpdates)
-                .help("Update AI Usage to \(version)")
-            }
-
             HStack(spacing: 0) {
                 Button {
                     store.refreshNow()

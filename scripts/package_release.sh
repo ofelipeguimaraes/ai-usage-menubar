@@ -26,6 +26,12 @@ disk_image="$artifact_directory/AI-Usage.dmg"
 checksum="$artifact_directory/AI-Usage.dmg.sha256"
 sparkle_account="ai-usage-menubar"
 
+# This fork removes Sparkle. Keep the upstream signed-appcast pipeline for
+# builds that still include it, and package this fork without upstream keys.
+if ! /usr/bin/grep -q 'repositoryURL = "https://github.com/sparkle-project/Sparkle"' "$project_path/project.pbxproj"; then
+    exec /bin/bash "$script_directory/package_fork.sh" "$version"
+fi
+
 if [[ ! -f "$release_notes" ]]; then
     printf 'Missing release notes: %s\n' "$release_notes" >&2
     exit 1
