@@ -433,7 +433,7 @@ final class MenuBarController: NSObject {
                 in: .rect(cornerRadius: 22)
             )
         )
-        hostingController.sizingOptions = []
+        hostingController.sizingOptions = [.preferredContentSize]
 
         let measuredSize = hostingController.sizeThatFits(
             in: NSSize(

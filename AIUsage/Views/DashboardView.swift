@@ -17,7 +17,8 @@ struct DashboardView: View {
 
     var body: some View {
         GlassEffectContainer(spacing: 10) {
-            DashboardContentView(
+            VStack(spacing: 0) {
+                DashboardContentView(
                 store: store,
                 usageDisplayMode: $usageDisplayMode,
                 panelSizeMode: panelSizeMode,
@@ -25,9 +26,8 @@ struct DashboardView: View {
                 maximumHeight: maximumHeight,
                 panelWidth: panelWidth
             )
-                .safeAreaBar(edge: .bottom, spacing: 0) {
-                    footer
-                }
+                footer
+            }
         }
         .frame(width: panelWidth)
         .onAppear {
@@ -169,18 +169,14 @@ struct DashboardContentView: View {
     }
 
     private var providerRows: some View {
-        ScrollView(.vertical) {
+        ContentFittingScrollView(maximumHeight: min(panelSizeMode == .compact ? 390 : .greatestFiniteMagnitude,
+                                                   max(80, maximumHeight - 110))) {
             providerRowsContent
         }
-        .frame(maxHeight: min(panelSizeMode == .compact ? 390 : .greatestFiniteMagnitude,
-                             max(80, maximumHeight - 110)))
-        .scrollIndicators(.automatic)
     }
 
     private var providerRowsContent: some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10, alignment: .top),
-                                 count: dashboardLayout.columnCount(availableWidth: panelWidth)),
-                  alignment: .leading, spacing: 6) {
+        ProviderCardLayout(columns: dashboardLayout.columnCount(availableWidth: panelWidth), spacing: 6) {
             ForEach(visibleProviders) { provider in
                 if let state = store.states[provider] {
                     ProviderSectionView(state: state, displayMode: usageDisplayMode)

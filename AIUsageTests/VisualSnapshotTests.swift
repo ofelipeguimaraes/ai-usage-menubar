@@ -161,6 +161,33 @@ final class VisualSnapshotTests: XCTestCase {
         XCTAssertEqual(DashboardLayout.twoColumns.columnCount(availableWidth: 780), 2)
     }
 
+    func testShortContentDoesNotFillTheAvailableScrollHeight() {
+        for limit in [CGFloat(300), CGFloat(700)] {
+            let view = ContentFittingScrollView(maximumHeight: limit) {
+                VStack(spacing: 6) {
+                    Color.red.frame(height: 50)
+                    Color.blue.frame(height: 70)
+                }
+            }
+            XCTAssertEqual(measuredSize(of: view, width: 392).height, 126, accuracy: 1)
+        }
+        let overflowing = ContentFittingScrollView(maximumHeight: 200) {
+            Color.red.frame(height: 500)
+        }
+        XCTAssertEqual(measuredSize(of: overflowing, width: 392).height, 200, accuracy: 1)
+    }
+
+    func testUnequalCardsPackWithoutRowHeightGaps() {
+        let view = ProviderCardLayout(columns: 2, spacing: 6) {
+            Color.red.frame(height: 100)
+            Color.blue.frame(height: 50)
+            Color.green.frame(height: 50)
+            Color.orange.frame(height: 40)
+        }
+        // The third card occupies the shorter column, then the fourth the first.
+        XCTAssertEqual(measuredSize(of: view, width: 392).height, 146, accuracy: 1)
+    }
+
     func testCardLayoutPreferencePersistsAcrossRestarts() {
         let suite = "LayoutTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
