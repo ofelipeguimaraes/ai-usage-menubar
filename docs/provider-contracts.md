@@ -189,3 +189,49 @@ Sources: [Kimi Code CLI](https://github.com/MoonshotAI/kimi-code),
 [legacy CLI usage implementation](https://github.com/MoonshotAI/kimi-cli/blob/main/src/kimi_cli/ui/shell/usage.py),
 and [membership benefits](https://www.kimi.ai/help/kimi-code/benefits).
 The monochrome Kimi icon follows the official documentation favicon.
+
+
+## MiniMax Token Plan
+
+MiniMax reads the existing Subscription Key from OpenCode's auth file:
+`~/.local/share/opencode/auth.json`, or `~/.config/opencode/auth.json`.
+`XDG_DATA_HOME` overrides the first directory. Recognized entries are
+`minimax-coding-plan` and `minimax-cn-coding-plan`. Generic `minimax` entries
+are accepted only when the key has the Subscription Key prefix `sk-cp`;
+ordinary pay-as-you-go keys are not treated as Token Plan credentials.
+`MINIMAX_API_KEY` and `MINIMAX_CN_API_KEY` may also supply a Subscription Key.
+Only installations with a matching credential are considered available.
+
+The global endpoint is `https://www.minimax.io`; the China endpoint is
+`https://www.minimax.cn`. Both requests are read-only and use Bearer auth:
+
+- `GET /v1/token_plan/remains` supplies quota percentages and reset times.
+- `GET /v1/api/openplatform/charge/combo/cycle_audio_resource_package`, with
+  `biz_line=2`, `cycle_type=1`, and `resource_package_type=7`, is the console's
+  subscription query. Its `current_subscribe.current_subscribe_title` supplies
+  the badge. Current subscription data takes priority over advertised packages.
+
+The current unified `general` bucket maps to 5-hour and weekly bars. Remaining
+percentages are authoritative even when absolute counters are zero. Used
+percentage is `100 - remaining_percent`; millisecond end timestamps are
+converted to dates. Countdown fields are never treated as consumed quota.
+Legacy responses without percentages use remaining-count semantics, matching
+MiniMax's CLI. Duplicate legacy model quotas retain the most consumed reading.
+Buckets marked not included, such as the Plus response's video row, are omitted.
+A monthly billing cycle is not interpreted as a monthly quota window.
+
+A successful HTTP response still requires `base_resp.status_code == 0`.
+Authentication, rate-limit, unavailable-service, missing-subscription, and
+malformed-data failures remain distinct. Missing quota data is never reported
+as zero usage. A failed subscription lookup preserves usable quota readings
+and falls back to the neutral badge `Token Plan`, without guessing a tier.
+
+MiniMax is added to existing tracking preferences once, persisted across
+restarts, and respects subsequent opt-outs. Weekly is the default menu bar
+metric; 5-hour usage can also be selected. The API does not require OpenCode
+to be running and these queries do not generate model usage.
+
+Sources: [official Token Plan FAQ](https://platform.minimax.io/docs/token-plan/faq),
+[official CLI quota semantics](https://github.com/MiniMax-AI/cli/blob/main/src/utils/quota.ts),
+and the subscription page's first-party console client. The MiniMax icon is
+sourced from [models.dev](https://github.com/anomalyco/models.dev/blob/dev/providers/minimax/logo.svg).

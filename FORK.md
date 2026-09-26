@@ -1,11 +1,11 @@
 # About this fork
 
-This fork exists for one reason: on some Antigravity accounts, upstream
-AI Usage reports quota that is not true.
+This fork began by fixing inaccurate Antigravity quotas and now also adds
+provider integrations including Kimi and MiniMax.
 
 It tracks [burakgon/ai-usage-menubar](https://github.com/burakgon/ai-usage-menubar)
-and changes exactly one provider. Everything else — the app, the design, the
-other seven providers — is upstream's work, unmodified. See
+and extends its provider integrations while retaining the native app and design.
+The original app and existing integrations are upstream's work. See
 [LICENSE](LICENSE) and [NOTICE](NOTICE).
 
 Reported upstream as
