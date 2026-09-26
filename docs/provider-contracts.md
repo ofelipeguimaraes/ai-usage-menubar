@@ -284,3 +284,29 @@ and retains the most consumed five-hour reading, including its reset timestamp.
 Monthly named windows remain independent, and a legacy weekly summary is only
 used when named windows are absent. Regression tests cover contradictory ratios,
 exhaustion, reset selection, and retaining a higher ratio.
+
+
+## Kimi monthly Code Share semantics
+
+The official installed Kimi Code CLI 2.1.1 parses `limit_month_total` and
+`limit_month_code`, but renders them as a single monthly pool with a breakdown.
+Its `monthlyBreakdown` function calculates `codeRatio` from `monthCode.usedRatio`
+and `kimiRatio` from `monthTotal.usedRatio - codeRatio`. Thus the code value is
+consumption attributed to Code, not an independent remaining allowance.
+
+The app now labels the existing `codeMonthly` metric `Code Share`, always showing
+consumed percentage in the card and menu bar, including when global Numbers is
+set to Left. Its drawing uses a neutral consumption style rather than warning
+thresholds for an independent quota. The stored metric ID is retained, preserving
+saved selections. Monthly remains the total membership pool's remaining/used quota.
+
+A live response reported 100/100 five-hour requests, 0.0621 monthly total usage,
+and 0 code share. The app displays the service's zero contribution without
+asserting why attribution is zero or estimating a minimum 1% from request counts.
+The server may have separate attribution/accounting behavior; no reliable local
+conversion between requests and monthly token-based credits is available.
+
+Sources: the installed official CLI's `parseQuotaUsages`, `quotaUsageRows`, and
+`monthlyBreakdown` functions, plus the
+[official shared-credit rules](https://www.kimi.com/en/help/membership/membership-update-rules)
+and [monthly quota documentation](https://www.kimi.com/code/docs/en/kimi-code/error-reference.html).
