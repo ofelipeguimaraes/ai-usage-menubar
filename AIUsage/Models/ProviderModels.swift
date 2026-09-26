@@ -12,6 +12,7 @@ enum ProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
     case deepseek
     case qwen
     case kimi
+    case minimax
 
     var id: Self { self }
 
@@ -28,6 +29,7 @@ enum ProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .deepseek: "DeepSeek"
         case .qwen: "Qwen"
         case .kimi: "Kimi"
+        case .minimax: "MiniMax"
         }
     }
 
@@ -44,6 +46,7 @@ enum ProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .deepseek: "ProviderDeepSeek"
         case .qwen: "ProviderQwen"
         case .kimi: "ProviderKimi"
+        case .minimax: "ProviderMiniMax"
         }
     }
 
@@ -71,6 +74,7 @@ enum ProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .deepseek: []
         case .qwen: ["qwen"]
         case .kimi: ["kimi"]
+        case .minimax: []
         }
     }
 
@@ -117,6 +121,8 @@ enum ProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
             ["~/.qwen/usage"]
         case .kimi:
             ["~/.kimi-code/bin/kimi", "~/.kimi-code/credentials", "~/.kimi"]
+        case .minimax:
+            ["~/.local/share/opencode/auth.json", "~/.config/opencode/auth.json"]
         }
     }
 
@@ -124,7 +130,7 @@ enum ProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
         switch self {
         case .cursor, .opencode: .totalUsage
         case .copilot: .credits
-        case .claude, .codex, .antigravity, .devin, .grok: .weekly
+        case .claude, .codex, .antigravity, .devin, .grok, .minimax: .weekly
         case .deepseek: .balance
         case .qwen, .kimi: .monthly
         }

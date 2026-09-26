@@ -24,6 +24,9 @@ final class LoginShellEnvironment: @unchecked Sendable {
         "CODEX_HOME",
         "KIMI_CODE_HOME",
         "KIMI_SHARE_DIR",
+        "MINIMAX_API_KEY",
+        "MINIMAX_CN_API_KEY",
+        "XDG_DATA_HOME",
         "PATH"
     ]
     private static let beginMarker = "__AIUSAGE_ENV_BEGIN__"
@@ -123,6 +126,7 @@ struct SystemProviderAvailabilityChecker: ProviderAvailabilityChecking {
             let path = environment.value(for: "PATH") ?? ""
 
             return Set(ProviderID.allCases.filter { provider in
+                if provider == .minimax { return MiniMaxAuthStore().load() != nil }
                 let descriptor = provider.descriptor
                 return descriptor.executableNames.contains {
                     Self.containsExecutable(named: $0, searchPath: path)

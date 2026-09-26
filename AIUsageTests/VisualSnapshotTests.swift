@@ -456,6 +456,15 @@ final class VisualSnapshotTests: XCTestCase {
                 ],
                 fetchedAt: now
             ),
+            .minimax: ProviderSnapshot(
+                provider: .minimax,
+                planName: "Plus",
+                windows: [
+                    QuotaWindow(kind: .fiveHour, usedPercent: 15, resetsAt: now.addingTimeInterval(3600)),
+                    QuotaWindow(kind: .weekly, usedPercent: 25, resetsAt: now.addingTimeInterval(86400))
+                ],
+                fetchedAt: now
+            ),
             .kimi: ProviderSnapshot(
                 provider: .kimi,
                 planName: "Plus",
