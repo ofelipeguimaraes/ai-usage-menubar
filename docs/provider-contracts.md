@@ -150,3 +150,42 @@ login.
 Temporary network failures, `429`, server errors, and invalid response shapes
 preserve the last-good in-memory snapshot and mark it stale. Authentication and
 storage failures clear that provider's snapshot.
+
+
+## Kimi membership usage
+
+Kimi uses the existing CLI login; no separate API key or browser session is
+required. The new CLI stores OAuth credentials in
+`~/.kimi-code/credentials/kimi-code.json`. Legacy file-based CLI credentials in
+`~/.kimi/credentials/kimi-code.json` are also supported. `KIMI_CODE_HOME` and
+`KIMI_SHARE_DIR` override these directories. Managed provider configuration
+selects the credential slot and official regional endpoint:
+`https://api.kimi.com/coding/v1` or `https://api.kimi.ai/coding/v1`.
+
+- `GET /usages` supplies quota ratios and reset timestamps.
+- `GET /me` supplies the actual membership badge through `user_level_name`.
+- `POST /api/oauth/token` on the matching `auth.kimi.com` or `auth.kimi.ai`
+  host refreshes expired OAuth credentials. Rotated credentials are saved
+  atomically with private permissions; a detected concurrent CLI login is
+  preserved instead of overwritten.
+
+The current quota contract exposes `usages.limit_5h`, `limit_7d`,
+`limit_month_total`, and `limit_month_code`. Only returned, valid quotas are
+shown. The Plus account verified during implementation returns 5-hour,
+monthly total, and monthly code quotas; it does not return a weekly quota.
+The monthly total is selected by default for the menu bar. Monthly code is a
+separate selectable metric. Older counter-based responses are also supported.
+Missing or invalid limits are never interpreted as zero usage.
+
+If present, the `BOOSTER` wallet balance is displayed in its currency. Wallet
+amounts use fixed-point millionths of a cent, independently of membership
+quota percentages. Profile failures do not hide valid usage readings.
+
+These are read-only membership requests; they do not generate model usage.
+To connect an account, run `kimi login`. Existing installations automatically
+add Kimi once while preserving subsequent tracking opt-outs.
+
+Sources: [Kimi Code CLI](https://github.com/MoonshotAI/kimi-code),
+[legacy CLI usage implementation](https://github.com/MoonshotAI/kimi-cli/blob/main/src/kimi_cli/ui/shell/usage.py),
+and [membership benefits](https://www.kimi.ai/help/kimi-code/benefits).
+The monochrome Kimi icon follows the official documentation favicon.
