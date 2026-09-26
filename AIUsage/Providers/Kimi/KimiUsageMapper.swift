@@ -20,6 +20,8 @@ enum KimiUsageMapper {
         try requireSuccess(usage)
         let root = try ProviderParsing.object(from: usage.body)
         var windows: [QuotaWindow] = []
+        // month_code is a contribution to month_total, as in the official CLI's
+        // monthlyBreakdown, not an independent remaining monthly allowance.
         if let quotas = ProviderParsing.object(root["usages"]) {
             for (key, kind) in [("limit_5h", QuotaKind.fiveHour), ("limit_7d", .weekly),
                                 ("limit_month_total", .monthly), ("limit_month_code", .codeMonthly)] {

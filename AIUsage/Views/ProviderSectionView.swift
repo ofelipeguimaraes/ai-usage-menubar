@@ -246,6 +246,10 @@ private struct QuotaTile: View {
     let window: QuotaWindow
     let displayMode: UsageDisplayMode
 
+    private var effectiveDisplayMode: UsageDisplayMode {
+        window.effectiveDisplayMode(displayMode)
+    }
+
     var body: some View {
         TimelineView(.periodic(from: .now, by: 60)) { context in
             VStack(alignment: .leading, spacing: 4) {
@@ -258,7 +262,7 @@ private struct QuotaTile: View {
                         Text(percentText)
                             .font(.title3.monospacedDigit().weight(.semibold))
                             .foregroundStyle(valueTint)
-                        Text(displayMode.valueSuffix)
+                        Text(effectiveDisplayMode.valueSuffix)
                             .font(.caption2.weight(.medium))
                             .foregroundStyle(.secondary)
                     }
@@ -274,7 +278,7 @@ private struct QuotaTile: View {
                             .fill(progressTint)
                             .frame(
                                 width: geometry.size.width *
-                                    displayMode.renderedFraction(
+                                    effectiveDisplayMode.renderedFraction(
                                         from: window.usedPercent
                                     )
                             )
@@ -299,13 +303,16 @@ private struct QuotaTile: View {
             .padding(.vertical, 4)
             .frame(maxWidth: .infinity, alignment: .topLeading)
             .accessibilityElement(children: .ignore)
+            .help(window.isUsageBreakdown
+                ? "Share of the monthly membership pool consumed by Kimi Code, as reported by Kimi. Not a separate remaining allowance."
+                : window.kind.title)
             .accessibilityLabel(window.kind.title)
             .accessibilityValue(accessibilityValue(relativeTo: context.date))
         }
     }
 
     private var percentText: String {
-        let value = displayMode.displayedPercent(from: window.usedPercent)
+        let value = effectiveDisplayMode.displayedPercent(from: window.usedPercent)
         if value.rounded() == value {
             return "\(Int(value))%"
         }
@@ -313,7 +320,8 @@ private struct QuotaTile: View {
     }
 
     private var valueTint: Color {
-        switch window.usedPercent {
+        if window.isUsageBreakdown { return Color(nsColor: .secondaryLabelColor) }
+        return switch window.usedPercent {
         case 85...: UsagePalette.critical
         case 60..<85: UsagePalette.warning
         default: Color(nsColor: .labelColor)
@@ -321,7 +329,8 @@ private struct QuotaTile: View {
     }
 
     private var progressTint: Color {
-        switch window.usedPercent {
+        if window.isUsageBreakdown { return UsagePalette.normalUsage }
+        return switch window.usedPercent {
         case 85...: UsagePalette.critical
         case 60..<85: UsagePalette.warning
         default: UsagePalette.normalUsage
@@ -347,7 +356,7 @@ private struct QuotaTile: View {
     }
 
     private func accessibilityValue(relativeTo now: Date) -> String {
-        let usage = "\(percentText) \(displayMode.valueSuffix)"
+        let usage = "\(percentText) \(effectiveDisplayMode.valueSuffix)"
         guard let reset = window.resetsAt else {
             return usage
         }

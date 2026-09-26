@@ -174,7 +174,7 @@ enum QuotaKind: String, Codable, Hashable, Sendable {
         case .claudePoolWeekly: "Claude Weekly"
         case .fiveHour: "5 Hour"
         case .monthly: "Monthly"
-        case .codeMonthly: "Code Monthly"
+        case .codeMonthly: "Code Share"
         case .mcpMonthly: "MCP Monthly"
         }
     }
@@ -250,7 +250,7 @@ enum MenuBarMetricID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .balance: "Balance"
         case .fiveHour: "5 Hour"
         case .monthly: "Monthly"
-        case .codeMonthly: "Code Monthly"
+        case .codeMonthly: "Code Share"
         case .mcpMonthly: "MCP Monthly"
         }
     }
@@ -376,6 +376,11 @@ struct QuotaWindow: Identifiable, Equatable, Sendable {
     let usedPercent: Double
     let resetsAt: Date?
 
+    var isUsageBreakdown: Bool { kind == .codeMonthly }
+    func effectiveDisplayMode(_ requested: UsageDisplayMode) -> UsageDisplayMode {
+        isUsageBreakdown ? .used : requested
+    }
+
     var id: QuotaKind { kind }
     var renderedFraction: Double { min(max(usedPercent / 100, 0), 1) }
 }
@@ -485,7 +490,7 @@ struct ProviderSnapshot: Equatable, Sendable {
     ) -> MenuBarReadingValue? {
         if let window = window(for: metric) {
             return .percentage(
-                displayMode.displayedPercent(from: window.usedPercent)
+                window.effectiveDisplayMode(displayMode).displayedPercent(from: window.usedPercent)
             )
         }
         guard billingUsage?.menuBarMetric == metric else { return nil }

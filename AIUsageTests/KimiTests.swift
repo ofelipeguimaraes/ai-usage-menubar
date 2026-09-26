@@ -2,6 +2,17 @@ import XCTest
 @testable import AIUsage
 
 final class KimiTests: XCTestCase {
+    func testCodeShareIsConsumedContributionEvenInRemainingMode() throws {
+        for ratio in [0.0, 0.0123] {
+            let snapshot = try KimiUsageMapper.map(usage: httpResponse(json:
+                "{\"usages\":{\"limit_month_total\":{\"used_ratio\":0.0621},\"limit_month_code\":{\"used_ratio\":\(ratio)}}}"), profile: nil, now: Date())
+            XCTAssertEqual(snapshot.menuBarValue(for: .codeMonthly, displayMode: .remaining), .percentage(ratio * 100))
+            XCTAssertEqual(snapshot.window(for: .codeMonthly)?.effectiveDisplayMode(.remaining), .used)
+            XCTAssertEqual(snapshot.window(for: .monthly)?.effectiveDisplayMode(.remaining), .remaining)
+            XCTAssertEqual(snapshot.menuBarValue(for: .monthly, displayMode: .remaining), .percentage(93.79))
+        }
+    }
+
     func testExhaustedFiveHourCounterOverridesAnIncorrectZeroRatio() throws {
         let snapshot = try KimiUsageMapper.map(usage: httpResponse(json: """
             {"limits":[{"window":{"duration":300,"timeUnit":"TIME_UNIT_MINUTE"},
