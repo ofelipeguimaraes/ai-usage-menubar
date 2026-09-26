@@ -235,3 +235,42 @@ Sources: [official Token Plan FAQ](https://platform.minimax.io/docs/token-plan/f
 [official CLI quota semantics](https://github.com/MiniMax-AI/cli/blob/main/src/utils/quota.ts),
 and the subscription page's first-party console client. The MiniMax icon is
 sourced from [models.dev](https://github.com/anomalyco/models.dev/blob/dev/providers/minimax/logo.svg).
+
+
+## GLM Coding Plan (Z.ai)
+
+GLM reads the `zai-coding-plan` API credential from OpenCode's
+`$XDG_DATA_HOME/opencode/auth.json` (default `~/.local/share/opencode/auth.json`),
+with `~/.config/opencode/auth.json` as a fallback. `ZAI_API_KEY` takes precedence.
+Generic pay-as-you-go `zai` credentials are not automatically selected.
+Availability requires a matching key; OpenCode need not be running.
+
+The read-only `GET https://api.z.ai/api/monitor/usage/quota/limit` uses the raw API
+key in `Authorization`, following the official Z.ai usage plugin. Both HTTP
+status and the API envelope (`code: 200`, `success: true`) must indicate success.
+HTTP or API 401/403 responses are authentication failures. HTTP 429 and server
+errors retain the last successful snapshot under the existing stale-data rules.
+
+`data.level` supplies the plan badge, including `lite` → `Lite`. A missing level
+uses `Coding Plan`, without guessing the subscription from quota limits.
+`data.limits` supports `CREDIT_LIMIT` and legacy `TOKENS_LIMIT`: unit 3/number 5
+is the 5-hour window, and unit 6/number 1 is weekly. `TIME_LIMIT` unit 5/number 1
+is shown separately as `MCP Monthly` when supplied. Only returned, valid windows
+are displayed; monthly model usage is not inferred.
+
+`percentage` is consumed usage on a 0–100 scale. The service can round this value
+independently of its credit counters, so the reported percentage is authoritative.
+`nextResetTime` is a Unix timestamp in milliseconds. Unknown quota types and
+missing or invalid percentages never become zero-consumption readings.
+Duplicate windows retain the most consumed reading.
+
+GLM tracking is enabled once for existing installations and persisted immediately;
+subsequent user opt-out is preserved. Tests cover credentials, the current Lite
+response, legacy tokens, MCP separation, errors, request authentication, settings,
+and preference migration. The installed OpenCode account was also verified with
+a temporary read-only integration test; no credentials are stored in the project.
+
+Sources: [official usage query documentation](https://docs.z.ai/devpack/extension/usage-query-plugin),
+[official query script](https://github.com/zai-org/zai-coding-plugins/blob/main/plugins/glm-plan-usage/skills/usage-query-skill/scripts/query-usage.mjs),
+and the live quota response. The icon comes from
+[models.dev](https://github.com/anomalyco/models.dev/blob/dev/providers/zai/logo.svg).

@@ -28,13 +28,13 @@
 </p>
 
 AI Usage shows Claude Code, Codex, Cursor, Antigravity, GitHub Copilot, Devin,
-Grok, OpenCode, DeepSeek, Qwen, Kimi, and MiniMax limits and stays out of the way. No extra account, API key, local
+Grok, OpenCode, DeepSeek, Qwen, Kimi, MiniMax, and GLM limits and stays out of the way. No extra account, API key, local
 server, telemetry, usage history, or background log scanning.
 
 > [!NOTE]
 > **This is a fork.** It fixes Antigravity quota on accounts whose Cloud Code
 > endpoint answers `403 PERMISSION_DENIED`, where upstream reports an expired
-> session or a false 100% left. It also adds providers including Kimi and MiniMax. See
+> session or a false 100% left. It also adds providers including Kimi, MiniMax, and GLM. See
 > [FORK.md](FORK.md) and
 > [upstream issue #5](https://github.com/burakgon/ai-usage-menubar/issues/5).
 
@@ -80,6 +80,7 @@ the menu bar rather than the Dock. macOS 26 or newer is required.
 - Grok weekly quota
 - Kimi membership plan badge, 5-hour, monthly total, and monthly code limits
 - Kimi weekly limits for legacy memberships and Extra Usage balance when available
+- GLM Coding Plan badge, 5-hour and weekly usage from your Z.ai OpenCode key
 - MiniMax Token Plan badge, 5-hour and weekly usage from your OpenCode subscription key
 - Claude Code extra usage and Codex credits when available
 - Remaining or used percentages, switchable directly in the panel

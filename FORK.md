@@ -1,7 +1,7 @@
 # About this fork
 
 This fork began by fixing inaccurate Antigravity quotas and now also adds
-provider integrations including Kimi and MiniMax.
+provider integrations including Kimi, MiniMax, and GLM.
 
 It tracks [burakgon/ai-usage-menubar](https://github.com/burakgon/ai-usage-menubar)
 and extends its provider integrations while retaining the native app and design.
