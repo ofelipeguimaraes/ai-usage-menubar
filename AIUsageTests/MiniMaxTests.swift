@@ -18,6 +18,18 @@ final class MiniMaxTests: XCTestCase {
      "cycle_resource_packages":[{"title":"Ultra"}],"current_combo_card":{"title":"Plus"}}
     """
 
+    func testReportedNinetyNinePercentIsNotReplacedByZeroCounters() throws {
+        let snapshot = try MiniMaxUsageMapper.map(usage: httpResponse(json: """
+            {"base_resp":{"status_code":0},"model_remains":[{"model_name":"general",
+            "current_interval_status":1,"current_interval_remaining_percent":99,
+            "current_interval_total_count":0,"current_interval_usage_count":0,
+            "current_weekly_status":1,"current_weekly_remaining_percent":99,
+            "current_weekly_total_count":0,"current_weekly_usage_count":0}]}
+            """), plan: nil, now: now)
+        XCTAssertEqual(snapshot.windows.map(\.usedPercent), [1, 1])
+        XCTAssertEqual(snapshot.menuBarValue(for: .weekly, displayMode: .remaining), .percentage(99))
+    }
+
     func testCurrentTokenPlanUsesPercentagesDespiteZeroCounters() throws {
         let snapshot = try MiniMaxUsageMapper.map(usage: httpResponse(json: usage),
                                                   plan: httpResponse(json: plan), now: now)
