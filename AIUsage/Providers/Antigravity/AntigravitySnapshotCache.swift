@@ -28,12 +28,13 @@ struct AntigravitySnapshotCache: @unchecked Sendable {
     }
 
     private struct Stored: Codable {
+        let accountKey: String?
         let planName: String?
         let windows: [StoredWindow]
         let readAt: Date
     }
 
-    func save(_ snapshot: ProviderSnapshot) {
+    func save(_ snapshot: ProviderSnapshot, accountKey: String? = nil) {
         let windows = snapshot.windows
             .filter { $0.kind.survivesCaching }
             .map {
@@ -45,6 +46,7 @@ struct AntigravitySnapshotCache: @unchecked Sendable {
             }
         guard !windows.isEmpty else { return }
         let stored = Stored(
+            accountKey: accountKey,
             planName: snapshot.planName,
             windows: windows,
             readAt: snapshot.fetchedAt
@@ -56,11 +58,15 @@ struct AntigravitySnapshotCache: @unchecked Sendable {
     /// The cached reading, with windows whose reset time has already passed
     /// dropped. A refreshed window is not 100% used, and guessing its new
     /// value would repeat the very bug this cache exists to avoid.
-    func load(now: Date) -> ProviderSnapshot? {
+    func load(now: Date, accountKey: String? = nil) -> ProviderSnapshot? {
         guard let data = defaults.data(forKey: Self.key),
               let stored = try? JSONDecoder().decode(Stored.self, from: data)
         else {
             return nil
+        }
+        if let accountKey, stored.accountKey != accountKey {
+            // Migrate old quota-only readings; never inherit an unbound plan.
+            guard stored.accountKey == nil, stored.planName == nil else { return nil }
         }
         let windows = stored.windows
             .filter { window in

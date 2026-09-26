@@ -240,7 +240,7 @@ final class AntigravityLocalQuotaTests: XCTestCase {
                 )
             ],
             fetchedAt: now
-        ))
+        ), accountKey: AntigravityAuthStore.fingerprint("test-access"))
         let provider = AntigravityProvider(
             authStore: signedInAuthStore,
             client: AntigravityUsageClient(
@@ -254,4 +254,136 @@ final class AntigravityLocalQuotaTests: XCTestCase {
         XCTAssertEqual(snapshot.windows.map(\.kind), [.weekly])
         XCTAssertEqual(snapshot.windows.first?.usedPercent, 61)
     }
+    func testReadsPaidPlanWithAntigravityUserAgent() async throws {
+        let http = MockHTTPClient([
+            httpResponse(json: "{\"paidTier\":{\"name\":\"Google AI Pro\"}}"),
+            httpResponse(json: runningCLISummary)
+        ])
+        let provider = AntigravityProvider(
+            authStore: signedInAuthStore,
+            client: AntigravityUsageClient(http: http),
+            localClient: closedCLI,
+            cache: AntigravitySnapshotCache(defaults: isolatedDefaults()),
+            dateProvider: FixedDateProvider(value: now)
+        )
+        let snapshot = try await provider.fetch()
+        XCTAssertEqual(snapshot.planName, "Pro")
+        let requests = await http.capturedRequests()
+        XCTAssertEqual(requests.first?.url.path, AntigravityUsageClient.planPath)
+        XCTAssertEqual(requests.first?.headers["User-Agent"], "antigravity")
+    }
+
+    func testRenewsExpiredTokenForPlanAndQuota() async throws {
+        let http = MockHTTPClient([
+            httpResponse(401),
+            httpResponse(json: "{\"access_token\":\"renewed\",\"expires_in\":3600}"),
+            httpResponse(json: "{\"paidTier\":{\"name\":\"Google AI Pro\"}}"),
+            httpResponse(json: runningCLISummary)
+        ])
+        let provider = AntigravityProvider(
+            authStore: AntigravityAuthStore(
+                runner: StubProcessRunner(stdout: "{\"access_token\":\"old\",\"refresh_token\":\"refresh\"}"),
+                files: MemoryFiles(),
+                dateProvider: FixedDateProvider(value: now)
+            ),
+            client: AntigravityUsageClient(http: http),
+            localClient: closedCLI,
+            cache: AntigravitySnapshotCache(defaults: isolatedDefaults()),
+            dateProvider: FixedDateProvider(value: now)
+        )
+        let snapshot = try await provider.fetch()
+        XCTAssertEqual(snapshot.planName, "Pro")
+        let requests = await http.capturedRequests()
+        XCTAssertEqual(requests.count, 4)
+        XCTAssertEqual(requests[2].headers["Authorization"], "Bearer renewed")
+        XCTAssertEqual(requests[3].headers["Authorization"], "Bearer renewed")
+    }
+
+    func testUpdatesPlanWhileKeepingCachedQuotaAndReadTime() async throws {
+        let defaults = isolatedDefaults()
+        let cache = AntigravitySnapshotCache(defaults: defaults)
+        let accountKey = AntigravityAuthStore.fingerprint("test-access")
+        cache.save(ProviderSnapshot(
+            provider: .antigravity,
+            planName: nil,
+            windows: [QuotaWindow(kind: .weekly, usedPercent: 61,
+                                  resetsAt: now.addingTimeInterval(600))],
+            fetchedAt: now.addingTimeInterval(-60)
+        ), accountKey: accountKey)
+        let provider = AntigravityProvider(
+            authStore: signedInAuthStore,
+            client: AntigravityUsageClient(http: MockHTTPClient([
+                httpResponse(json: "{\"paidTier\":{\"name\":\"Google AI Pro\"}}"),
+                httpResponse(403)
+            ])),
+            localClient: closedCLI,
+            cache: cache,
+            dateProvider: FixedDateProvider(value: now)
+        )
+        let snapshot = try await provider.fetch()
+        XCTAssertEqual(snapshot.planName, "Pro")
+        XCTAssertEqual(snapshot.windows.first?.usedPercent, 61)
+        XCTAssertEqual(snapshot.fetchedAt, now.addingTimeInterval(-60))
+        XCTAssertEqual(cache.load(now: now, accountKey: accountKey)?.planName, "Pro")
+    }
+
+    func testCacheDoesNotReuseAnotherAccountsPlan() {
+        let cache = AntigravitySnapshotCache(defaults: isolatedDefaults())
+        cache.save(ProviderSnapshot(
+            provider: .antigravity, planName: "Pro",
+            windows: [QuotaWindow(kind: .weekly, usedPercent: 10,
+                                  resetsAt: now.addingTimeInterval(600))],
+            fetchedAt: now
+        ), accountKey: "account-a")
+        XCTAssertNil(cache.load(now: now, accountKey: "account-b"))
+    }
+
+    func testTemporaryPlanFailurePreservesPlanFromSameAccount() async throws {
+        let defaults = isolatedDefaults()
+        let cache = AntigravitySnapshotCache(defaults: defaults)
+        cache.save(ProviderSnapshot(
+            provider: .antigravity, planName: "Pro",
+            windows: [QuotaWindow(kind: .weekly, usedPercent: 10,
+                                  resetsAt: now.addingTimeInterval(600))],
+            fetchedAt: now
+        ), accountKey: AntigravityAuthStore.fingerprint("test-access"))
+        let provider = AntigravityProvider(
+            authStore: signedInAuthStore,
+            client: AntigravityUsageClient(http: MockHTTPClient([
+                httpResponse(403), httpResponse(json: runningCLISummary)
+            ])),
+            localClient: closedCLI, cache: cache,
+            dateProvider: FixedDateProvider(value: now)
+        )
+        let snapshot = try await provider.fetch()
+        XCTAssertEqual(snapshot.planName, "Pro")
+        XCTAssertEqual(cache.load(now: now)?.planName, "Pro")
+    }
+
+    func testMigratesLegacyQuotaWithoutInheritingAnUnboundPlan() {
+        let cache = AntigravitySnapshotCache(defaults: isolatedDefaults())
+        let snapshot = ProviderSnapshot(
+            provider: .antigravity, planName: nil,
+            windows: [QuotaWindow(kind: .weekly, usedPercent: 10,
+                                  resetsAt: now.addingTimeInterval(600))],
+            fetchedAt: now
+        )
+        cache.save(snapshot)
+        XCTAssertNotNil(cache.load(now: now, accountKey: "current-account"))
+        cache.save(ProviderSnapshot(
+            provider: .antigravity, planName: "Pro", windows: snapshot.windows,
+            fetchedAt: now
+        ))
+        XCTAssertNil(cache.load(now: now, accountKey: "current-account"))
+    }
+
+    func testPlanParserPrefersPaidTierAndDoesNotGuessAllowedTiers() {
+        XCTAssertEqual(AntigravityUsageMapper.plan(Data(
+            "{\"paidTier\":{\"name\":\"Google AI Pro\"},\"currentTier\":{\"name\":\"Antigravity\"}}".utf8
+        )), "Pro")
+        XCTAssertNil(AntigravityUsageMapper.plan(Data(
+            "{\"allowedTiers\":[{\"name\":\"Google AI Pro\"}]}".utf8
+        )))
+    }
+
 }

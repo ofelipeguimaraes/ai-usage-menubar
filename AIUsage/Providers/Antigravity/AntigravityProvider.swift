@@ -44,20 +44,27 @@ actor AntigravityProvider: UsageProvider {
             token = await refreshedToken(refresh)
         }
 
-        if let snapshot = await localSnapshot(token: token, now: now) {
-            cache.save(snapshot)
+        let accountKey = auth.flatMap { $0.refreshToken ?? $0.accessToken }
+            .map(AntigravityAuthStore.fingerprint)
+        let planResult = await planName(token: token, refreshToken: auth?.refreshToken)
+        token = planResult.token
+        let cached = accountKey.flatMap { cache.load(now: now, accountKey: $0) }
+        let plan = planResult.name ?? cached?.planName
+
+        if let snapshot = await localSnapshot(plan: plan, now: now) {
+            cache.save(snapshot, accountKey: accountKey)
             return snapshot
         }
 
         guard auth != nil else {
-            if let cached = cache.load(now: now) { return cached }
+            if let cached { return cachedSnapshot(cached, plan: plan, accountKey: accountKey) }
             throw ProviderFailure(
                 .authentication,
                 "Not logged in. Sign in through Antigravity."
             )
         }
         guard let token else {
-            if let cached = cache.load(now: now) { return cached }
+            if let cached { return cachedSnapshot(cached, plan: plan, accountKey: accountKey) }
             throw ProviderFailure(
                 .authentication,
                 "Antigravity session expired. Sign in again."
@@ -82,16 +89,16 @@ actor AntigravityProvider: UsageProvider {
         if case let .success(data) = summary,
            let snapshot = AntigravityUsageMapper.summary(
                data,
-               planName: await planName(token: token),
+               planName: plan,
                now: now
            ),
            !snapshot.windows.isEmpty {
-            cache.save(snapshot)
+            cache.save(snapshot, accountKey: accountKey)
             return snapshot
         }
 
-        if let cached = cache.load(now: now) {
-            return cached
+        if let cached {
+            return cachedSnapshot(cached, plan: plan, accountKey: accountKey)
         }
 
         switch summary {
@@ -115,13 +122,13 @@ actor AntigravityProvider: UsageProvider {
     }
 
     private func localSnapshot(
-        token: String?,
+        plan: String?,
         now: Date
     ) async -> ProviderSnapshot? {
         guard let data = await localClient.summary() else { return nil }
         guard let snapshot = AntigravityUsageMapper.summary(
             data,
-            planName: await planName(token: token),
+            planName: plan,
             now: now
         ), !snapshot.windows.isEmpty else {
             return nil
@@ -129,17 +136,44 @@ actor AntigravityProvider: UsageProvider {
         return snapshot
     }
 
-    /// The plan label is cosmetic, so a failure here never fails the fetch.
-    private func planName(token: String?) async -> String? {
-        guard let token else { return nil }
-        guard case let .success(data) = await client.cloudCode(
+    /// A missing plan must not prevent authoritative quota readings.
+    private func planName(
+        token: String?,
+        refreshToken: String?
+    ) async -> (name: String?, token: String?) {
+        guard var token else { return (nil, nil) }
+        var response = await client.cloudCode(
             path: AntigravityUsageClient.planPath,
             accessToken: token,
             userAgent: "antigravity"
-        ) else {
-            return nil
+        )
+        if case .authentication = response,
+           let refreshToken,
+           let refreshed = await refreshedToken(refreshToken) {
+            token = refreshed
+            response = await client.cloudCode(
+                path: AntigravityUsageClient.planPath,
+                accessToken: token,
+                userAgent: "antigravity"
+            )
         }
-        return AntigravityUsageMapper.plan(data)
+        guard case let .success(data) = response else { return (nil, token) }
+        return (AntigravityUsageMapper.plan(data), token)
+    }
+
+    private func cachedSnapshot(
+        _ snapshot: ProviderSnapshot,
+        plan: String?,
+        accountKey: String?
+    ) -> ProviderSnapshot {
+        let updated = ProviderSnapshot(
+            provider: id,
+            planName: plan,
+            windows: snapshot.windows,
+            fetchedAt: snapshot.fetchedAt
+        )
+        cache.save(updated, accountKey: accountKey)
+        return updated
     }
 
     private func refreshedToken(_ refresh: String) async -> String? {
