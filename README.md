@@ -67,7 +67,9 @@ the menu bar rather than the Dock. macOS 26 or newer is required.
 
 > [!NOTE]
 > Public builds are signed with a Developer ID certificate, notarized by Apple,
-> and protected by Sparkle's EdDSA signature for secure in-app updates.
+> These download links refer to upstream builds, which do not include this fork's
+> changes. Build this fork from source to use its integrations. This fork has no
+> in-app updater.
 
 ## What you get
 
@@ -77,6 +79,9 @@ the menu bar rather than the Dock. macOS 26 or newer is required.
 - Antigravity Gemini and Claude pool limits
 - GitHub Copilot credits, chat, and completions
 - Devin daily and weekly quota
+- OpenCode Go server-reported quotas; Zen-only accounts show the quota API limitation
+- DeepSeek API balance
+- QwenCloud personal Token Plan usage
 - Grok weekly quota
 - Kimi membership plan badge, 5-hour, monthly total, and monthly code limits
 - Kimi weekly limits for legacy memberships and Extra Usage balance when available
@@ -86,8 +91,7 @@ the menu bar rather than the Dock. macOS 26 or newer is required.
 - Remaining or used percentages, switchable directly in the panel
 - Independent menu bar controls and metric choices for each provider
 - Configurable 1, 5, 15, 30, or 60-minute refresh and one-click manual refresh
-- Signed update checks at launch and daily, plus **Check for Updates…**
-- A direct **Update** button in the panel when a new version is available
+- No in-app updater or upstream update installation
 - Provider cards only for installed tools, with signed-out status kept visible
 - Native light and dark appearances with Liquid Glass
 - Launch at Login enabled by default and still user-controllable
@@ -168,10 +172,12 @@ xcodebuild test \
   -destination 'platform=macOS'
 ```
 
-The app is SwiftUI and AppKit, with a small provider layer and an in-memory
-store. Its only runtime package dependency is
-[Sparkle](https://github.com/sparkle-project/Sparkle), used for signed
-over-the-air updates.
+The app is SwiftUI and AppKit, with a provider layer and an in-memory store.
+Antigravity additionally retains an account-bound weekly snapshot across launches.
+This fork removes the Sparkle runtime dependency and update controls.
+`scripts/package_release.sh <existing-version>` selects the fork packaging path,
+which produces an ad-hoc signed DMG without upstream update keys or an appcast.
+It does not bump the version or publish a release.
 
 Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md)
 before opening a pull request.

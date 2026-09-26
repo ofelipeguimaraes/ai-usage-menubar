@@ -124,7 +124,7 @@ Requires macOS 26+. Upstream asks for Xcode 27; this builds on Xcode 26.6.
 ```bash
 git clone https://github.com/<your-account>/ai-usage-menubar.git
 cd ai-usage-menubar
-git checkout fix/antigravity-local-quota
+git checkout main
 
 xcodebuild -project AIUsage.xcodeproj -scheme AIUsage -configuration Release \
   -destination 'platform=macOS' CODE_SIGN_IDENTITY="-" \
@@ -142,14 +142,8 @@ codesign --force --deep --sign - "/Applications/AI Usage.app"
 open -a "/Applications/AI Usage.app"
 ```
 
-That final `codesign` is not optional. The app binary is signed ad-hoc while
-the bundled Sparkle.framework keeps its original Developer ID signature, and
-macOS refuses to load a bundle whose Team IDs disagree:
-
-```
-Library not loaded: @rpath/Sparkle.framework/Versions/B/Sparkle
-Reason: ... mapping process and mapped file (non-platform) have different Team IDs
-```
+The fork no longer bundles Sparkle. Local builds are ad-hoc signed and are not
+notarized. The original upstream signed-update pipeline is not used.
 
 Run the tests with:
 
@@ -165,7 +159,7 @@ xcodebuild test -project AIUsage.xcodeproj -scheme AIUsage \
 - Local builds are neither Developer ID signed nor notarized. Upstream's
   releases are both; this fork ships no binaries.
 - Installing an upstream release replaces this build and removes the fix.
-  Sparkle only notifies, it does not install on its own.
+  This fork removes Sparkle and has no in-app updater.
 - The `agy remote-control` daemon keeps the endpoint alive permanently, which
   would make values always live, but it requires a CSRF token
   (`x-codeium-csrf-token`) held in memory rather than on disk. Not pursued
@@ -174,8 +168,11 @@ xcodebuild test -project AIUsage.xcodeproj -scheme AIUsage \
 
 ## Relationship to upstream
 
-This is a fix, not a competing project. If upstream adopts it, this fork has
-no reason to exist. Credit for AI Usage belongs to
+This fork now contains additional providers and layout choices beyond the
+original Antigravity fix. Credit for AI Usage belongs to
 [Burak Gon](https://github.com/burakgon), and the provider-contract research
 it builds on belongs to [OpenUsage](https://github.com/robinebers/openusage),
 as recorded in [NOTICE](NOTICE).
+
+The full compatibility and plan-name review is recorded in
+[docs/fork-audit.md](docs/fork-audit.md).

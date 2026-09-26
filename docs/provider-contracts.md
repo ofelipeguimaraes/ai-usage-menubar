@@ -126,18 +126,17 @@ causes at most one refresh and one retry.
 | Devin | `~/.local/share/devin/credentials.toml`, then Devin state SQLite database | Codeium SeatManagement Connect RPC | Daily, Weekly |
 | Grok | `~/.grok/auth.json` | Grok CLI billing and settings APIs | Weekly |
 | DeepSeek | `deepseek` entry in `~/.local/share/opencode/auth.json`, then `~/.config/opencode/auth.json`, then `DEEPSEEK_API_KEY` | `api.deepseek.com/user/balance` | Balance |
-| Qwen (TokenPlan) | Local usage files at `~/.qwen/usage/token-usage-*.jsonl` | No public API; reads local request logs written by Qwen Code | 5-Hour, Weekly, Monthly (request count) |
+| QwenCloud personal Token Plan | Existing Chromium browser console session | QwenCloud console gateway | 5-Hour, Weekly, Monthly |
+| OpenCode Go | Existing OpenCode auth file or legacy Keychain | `opencode.ai/zen/go/v1/usage` | 5-Hour, Weekly, Monthly |
 
 Cursor, Antigravity, and Grok refresh expiring access tokens using the refresh
 credential already stored by the corresponding tool. Refreshed tokens are
 persisted only where necessary; Antigravity's derived access token is cached
 privately by AI Usage and bound to a hash of the current refresh credential.
 
-OpenCode is intentionally not included: its current limits require scanning
-local usage databases and are machine-local estimates, which conflicts with
-AI Usage's no-background-log-scanning design. OpenRouter and Z.ai are also
-excluded because they require users to add API keys instead of reusing a local
-agent login.
+OpenCode now reads the official Go quota endpoint. Zen-only accounts do not
+receive an invented quota based on local sessions. GLM reuses the Z.ai key
+already stored by OpenCode; OpenRouter remains unsupported.
 
 ## Persistence and failure policy
 
@@ -274,3 +273,25 @@ Sources: [official usage query documentation](https://docs.z.ai/devpack/extensio
 [official query script](https://github.com/zai-org/zai-coding-plugins/blob/main/plugins/glm-plan-usage/skills/usage-query-skill/scripts/query-usage.mjs),
 and the live quota response. The icon comes from
 [models.dev](https://github.com/anomalyco/models.dev/blob/dev/providers/zai/logo.svg).
+
+
+## OpenCode quota audit correction
+
+The previous implementation assumed a two-million-token monthly allowance and
+summed all local sessions, including requests made to other providers. That
+estimate has been removed. The read-only `GET /zen/go/v1/usage` endpoint returns
+`usage.rolling`, `weekly`, and `monthly`, with consumed `percent` and ISO
+`resetsAt`. Its implementation requires an active Go entitlement, so a successful
+quota response is labeled `Go`; this is an endpoint contract, not a user-specific
+plan assumption. A 403 is reported as an entitlement/access limitation without
+claiming the key is invalid or inventing Zen usage. Zen balance remains available
+in the billing console. No inference requests are made.
+
+Credentials come from `OPENCODE_API_KEY`, OpenCode's `opencode-go` or `opencode`
+API entries (including `XDG_DATA_HOME`), then the legacy `opencode-api-key`
+Keychain entry. Independent GLM, MiniMax, and DeepSeek subscriptions used through
+OpenCode remain separate providers.
+
+Sources: [official Go usage endpoint source](https://github.com/anomalyco/opencode/blob/dev/packages/console/app/src/routes/zen/go/v1/usage.ts),
+[Go documentation](https://opencode.ai/docs/go/), and
+[Zen documentation](https://opencode.ai/docs/zen/).
