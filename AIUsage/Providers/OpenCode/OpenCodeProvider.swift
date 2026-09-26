@@ -4,64 +4,51 @@ actor OpenCodeProvider: UsageProvider {
     nonisolated let id = ProviderID.opencode
     private let authStore: OpenCodeAuthStore
     private let client: OpenCodeUsageClient
+    private let dateProvider: any DateProviding
 
-    init(
-        authStore: OpenCodeAuthStore = OpenCodeAuthStore(),
-        client: OpenCodeUsageClient = OpenCodeUsageClient()
-    ) {
+    init(authStore: OpenCodeAuthStore = OpenCodeAuthStore(),
+         client: OpenCodeUsageClient = OpenCodeUsageClient(),
+         dateProvider: any DateProviding = SystemDateProvider()) {
         self.authStore = authStore
         self.client = client
+        self.dateProvider = dateProvider
     }
 
     func fetch() async throws -> ProviderSnapshot {
-        let token = authStore.loadToken()
-        guard token != nil else {
-            throw ProviderFailure(.authentication, "Not logged in to OpenCode Zen.")
+        guard let token = authStore.loadToken() else {
+            throw ProviderFailure(.authentication, "Connect OpenCode Zen or Go in OpenCode.")
         }
-        
-        let dbPath = NSString(string: "~/.local/share/opencode/opencode.db").expandingTildeInPath
-        var usedTokens = 0
-        let now = Date()
-
-        // Query only sessions created in the current calendar month (ms timestamps)
-        do {
-            let runner = SystemProcessRunner()
-            let query = """
-                SELECT COALESCE(SUM(tokens_input) + SUM(tokens_output), 0) FROM session \
-                WHERE time_created >= strftime('%s', 'now', 'start of month') * 1000 \
-                AND time_created < strftime('%s', 'now', 'start of month', '+1 month') * 1000;
-                """
-            let result = try runner.run(
-                executable: "/usr/bin/sqlite3",
-                arguments: [dbPath, query]
-            )
-            if result.succeeded, let tokens = Int(result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)) {
-                usedTokens = tokens
-            }
-        } catch {
-            // Ignore error and use 0 if DB is not found or locked
-        }
-
-        return ProviderSnapshot(
-            provider: .opencode,
-            planName: "Zen",
-            windows: [
-                QuotaWindow(
-                    kind: .totalUsage,
-                    usedPercent: min((Double(usedTokens) / 2_000_000.0) * 100.0, 100.0),
-                    resetsAt: startOfNextMonth(from: now)
-                )
-            ], 
-            fetchedAt: now
-        )
+        return try OpenCodeUsageMapper.map(await client.fetchUsage(token: token), now: dateProvider.now())
     }
+}
 
-    private func startOfNextMonth(from date: Date) -> Date? {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(identifier: "UTC")!
-        guard let startOfMonth = calendar.dateInterval(of: .month, for: date)?.start else {
-            return nil
+enum OpenCodeUsageMapper {
+    static func map(_ response: HTTPResponse, now: Date) throws -> ProviderSnapshot {
+        switch response.statusCode {
+        case 200..<300: break
+        case 401: throw ProviderFailure(.authentication, "OpenCode API key was rejected. Reconnect OpenCode.")
+        case 403:
+            throw ProviderFailure(.invalidResponse,
+                "OpenCode reports no Go entitlement or denies access. Zen balance is available in the OpenCode billing console; local tokens are not a subscription quota.")
+        case 429: throw ProviderFailure(.rateLimited, "OpenCode usage requests are temporarily rate limited.")
+        case 500...599: throw ProviderFailure(.transient, "OpenCode usage is temporarily unavailable.")
+        default: throw ProviderFailure(.invalidResponse, "OpenCode usage request failed (\(response.statusCode)).")
         }
-        return calendar.date(byAdding: .month, value: 1, to: startOfMonth)
+        let root = try ProviderParsing.object(from: response.body)
+        guard let usage = ProviderParsing.object(root["usage"]) else {
+            throw ProviderFailure(.invalidResponse, "OpenCode usage response changed.")
+        }
+        let windows = [("rolling", QuotaKind.fiveHour), ("weekly", .weekly), ("monthly", .monthly)].compactMap { key, kind -> QuotaWindow? in
+            guard let window = ProviderParsing.object(usage[key]),
+                  let percent = ProviderParsing.double(window["percent"]), percent.isFinite,
+                  (0...100).contains(percent) else { return nil }
+            return QuotaWindow(kind: kind, usedPercent: percent,
+                               resetsAt: ProviderParsing.date(window["resetsAt"]))
+        }
+        guard !windows.isEmpty else {
+            throw ProviderFailure(.invalidResponse, "OpenCode has no supported quota data.")
+        }
+        // This endpoint requires Go entitlement; Zen is pay-as-you-go, not this plan.
+        return ProviderSnapshot(provider: .opencode, planName: "Go", windows: windows, fetchedAt: now)
     }
 }
