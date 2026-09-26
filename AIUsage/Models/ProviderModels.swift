@@ -446,6 +446,7 @@ struct ProviderSnapshot: Equatable, Sendable {
     let planName: String?
     let windows: [QuotaWindow]
     let billingUsage: BillingUsage?
+    let statusMessage: String?
     let fetchedAt: Date
 
     init(
@@ -453,12 +454,14 @@ struct ProviderSnapshot: Equatable, Sendable {
         planName: String?,
         windows: [QuotaWindow],
         billingUsage: BillingUsage? = nil,
+        statusMessage: String? = nil,
         fetchedAt: Date
     ) {
         self.provider = provider
         self.planName = planName
         self.windows = windows
         self.billingUsage = billingUsage
+        self.statusMessage = statusMessage
         self.fetchedAt = fetchedAt
     }
 

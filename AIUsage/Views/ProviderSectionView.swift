@@ -32,6 +32,14 @@ struct ProviderSectionView: View {
                         displayMode: displayMode
                     )
                 }
+            } else if let snapshot = state.snapshot, let message = snapshot.statusMessage {
+                ProviderStatusRow(message: message, systemImage: "info.circle")
+                if snapshot.provider == .opencode, snapshot.planName == "Zen" {
+                    Link("View balance", destination: URL(string: "https://opencode.ai/zen")!)
+                        .font(.caption)
+                        .padding(.horizontal, 14)
+                        .padding(.bottom, 12)
+                }
             } else if state.isRefreshing {
                 ProviderStatusRow(
                     message: "Checking local login…",

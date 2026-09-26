@@ -28,8 +28,16 @@ enum OpenCodeUsageMapper {
         case 200..<300: break
         case 401: throw ProviderFailure(.authentication, "OpenCode API key was rejected. Reconnect OpenCode.")
         case 403:
-            throw ProviderFailure(.invalidResponse,
-                "OpenCode reports no Go entitlement or denies access. Zen balance is available in the OpenCode billing console; local tokens are not a subscription quota.")
+            let root = try? ProviderParsing.object(from: response.body)
+            let error = ProviderParsing.object(root?["error"])
+            // The server validates the key before checking Go entitlement.
+            // Only this specific structured response confirms a Zen-only account.
+            if ProviderParsing.string(error?["type"]) == "EntitlementError",
+               ProviderParsing.string(error?["message"]) == "OpenCode Go subscription required." {
+                return ProviderSnapshot(provider: .opencode, planName: "Zen", windows: [],
+                    statusMessage: "Pay-as-you-go. View your balance in OpenCode.", fetchedAt: now)
+            }
+            throw ProviderFailure(.transient, "OpenCode usage is temporarily unavailable. Try again later.")
         case 429: throw ProviderFailure(.rateLimited, "OpenCode usage requests are temporarily rate limited.")
         case 500...599: throw ProviderFailure(.transient, "OpenCode usage is temporarily unavailable.")
         default: throw ProviderFailure(.invalidResponse, "OpenCode usage request failed (\(response.statusCode)).")
