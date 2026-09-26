@@ -133,6 +133,7 @@ final class KimiTests: XCTestCase {
         defaults.set(true, forKey: "openUsageProvidersAdded.v1")
         let preferences = AppPreferences(defaults: defaults)
         XCTAssertTrue(preferences.trackedProviderIDs.contains(.kimi))
+        XCTAssertTrue(AppPreferences(defaults: defaults).trackedProviderIDs.contains(.kimi))
         preferences.setTracking(false, for: .kimi)
         XCTAssertFalse(AppPreferences(defaults: defaults).trackedProviderIDs.contains(.kimi))
     }

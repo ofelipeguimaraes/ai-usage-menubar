@@ -97,6 +97,10 @@ final class AppPreferences {
         }
         defaults.set(true, forKey: Key.kimiProviderAdded)
         trackedProviderIDs = initialTrackedProviders
+        defaults.set(
+            Self.encode(Array(initialTrackedProviders).sorted { $0.rawValue < $1.rawValue }),
+            forKey: Key.trackedProviderIDs
+        )
         defaults.set(true, forKey: Key.openUsageProvidersAdded)
 
         let storedVisibleProviders = Self.decode(
