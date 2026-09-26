@@ -143,6 +143,15 @@ Raw percentages are shown exactly as reported by the provider. Only progress
 bar drawing is clamped to `0...100`. Remaining usage is bounded to `0...100`
 because a negative remaining percentage is not meaningful.
 
+The dashboard fits within the active screen's visible area. Provider cards scroll
+in both Compact and Expanded panel modes while the header and footer remain
+accessible. Settings also scroll on smaller screens.
+
+In **Settings → Card Layout**, choose **One column** (default) or **Two columns**
+to place provider cards side by side. The preference persists across launches;
+narrow screens automatically use one column. Expanded mode uses the available
+screen height, while Compact keeps a shorter scrolling list.
+
 ## Development
 
 Run the complete test suite:
