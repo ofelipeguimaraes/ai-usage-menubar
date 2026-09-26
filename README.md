@@ -79,7 +79,7 @@ the menu bar rather than the Dock. macOS 26 or newer is required.
 - Antigravity Gemini and Claude pool limits
 - GitHub Copilot credits, chat, and completions
 - Devin daily and weekly quota
-- OpenCode Go server-reported quotas; Zen-only accounts show the quota API limitation
+- OpenCode Go server-reported quotas and API-confirmed Zen pay-as-you-go status
 - DeepSeek API balance
 - QwenCloud personal Token Plan usage
 - Grok weekly quota

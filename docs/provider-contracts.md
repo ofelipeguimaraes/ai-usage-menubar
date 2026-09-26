@@ -283,9 +283,12 @@ estimate has been removed. The read-only `GET /zen/go/v1/usage` endpoint returns
 `usage.rolling`, `weekly`, and `monthly`, with consumed `percent` and ISO
 `resetsAt`. Its implementation requires an active Go entitlement, so a successful
 quota response is labeled `Go`; this is an endpoint contract, not a user-specific
-plan assumption. A 403 is reported as an entitlement/access limitation without
-claiming the key is invalid or inventing Zen usage. Zen balance remains available
-in the billing console. No inference requests are made.
+plan assumption. The structured 403 `EntitlementError` with `OpenCode Go subscription required.`
+confirms an authenticated account without Go entitlement and produces a normal
+`Zen` card with pay-as-you-go information and a balance-console link. Other 403
+responses, including edge/network blocks, do not identify a plan and remain
+transient failures. Requests identify the app with `User-Agent: AIUsage`. Zen
+balance remains available in the billing console. No inference requests are made.
 
 Credentials come from `OPENCODE_API_KEY`, OpenCode's `opencode-go` or `opencode`
 API entries (including `XDG_DATA_HOME`), then the legacy `opencode-api-key`
@@ -295,3 +298,22 @@ OpenCode remain separate providers.
 Sources: [official Go usage endpoint source](https://github.com/anomalyco/opencode/blob/dev/packages/console/app/src/routes/zen/go/v1/usage.ts),
 [Go documentation](https://opencode.ai/docs/go/), and
 [Zen documentation](https://opencode.ai/docs/zen/).
+
+
+Zen identification was verified against the installed account using a temporary
+read-only provider test. Generic 403 status alone is never used to infer Zen or
+Go, and a missing balance is not represented as zero or a fabricated allowance.
+The first request without an app User-Agent returned an edge-layer 403; after
+adding it, the service returned its structured missing-Go-entitlement response.
+
+
+## Kimi overlapping five-hour formats
+
+Some current responses contain both named ratio windows and absolute `limits`
+counters. A live response reported `limit_5h.used_ratio: 0` alongside a 300-minute
+counter with `used: 100` and `limit: 100`. Both describe supported five-hour
+limits. The mapper now considers absolute counters even when named ratios exist
+and retains the most consumed five-hour reading, including its reset timestamp.
+Monthly named windows remain independent, and a legacy weekly summary is only
+used when named windows are absent. Regression tests cover contradictory ratios,
+exhaustion, reset selection, and retaining a higher ratio.

@@ -44,7 +44,7 @@ bump, tag, or release was created.
 | Devin | API `planInfo.planName` | No user-specific tier. |
 | Grok | API `subscription_tier_display` | Returned display name preserved; absent name is not assumed to be SuperGrok. |
 | DeepSeek | `API` service label | This is not a subscription tier. The API exposes balance, not a paid plan name. |
-| OpenCode | Successful Go-entitlement quota endpoint → `Go` | Zen is pay-as-you-go. The old fixed `Zen` badge and fabricated monthly quota were removed. Unsupported Zen balance is reported explicitly. |
+| OpenCode | Successful Go-entitlement quota endpoint → `Go` | Zen is pay-as-you-go. The old fixed `Zen` badge and fabricated monthly quota were removed. Structured missing-Go entitlement confirms Zen and shows a normal informational card; unstructured denial never identifies a plan. |
 | QwenCloud | Console subscription `specCode` | Missing subscription lookup falls back to `Token Plan`, a service label; personal international console plans only. |
 | Kimi | Profile API `user_level_name` | No Plus default; both official API regions and legacy/current CLI credential layouts are supported. |
 | GLM (Z.ai) | Quota API `data.level` | No Lite default; unknown nonempty tiers are preserved. Missing level gives `Coding Plan`. Global Z.ai credentials are supported, not arbitrary China/BigModel accounts. |
@@ -64,7 +64,7 @@ only the available accounts and did not store secrets in the project.
 ## Corrections and validation
 
 - Removed OpenCode's fixed two-million-token denominator and local SQLite scan.
-  Only server-returned Go quotas are shown; missing/unsupported quotas are errors.
+  Only server-returned Go quotas are shown. API-confirmed Zen accounts use a normal pay-as-you-go card with a console link; no balance or allowance is invented.
 - Grok rejects missing/nonfinite percentages instead of showing zero usage.
 - DeepSeek supports custom OpenCode data directories and API credential types;
   its environment key is also captured for menu-bar launches from Finder.
