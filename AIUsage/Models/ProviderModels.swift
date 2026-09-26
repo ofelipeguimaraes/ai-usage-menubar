@@ -376,11 +376,6 @@ struct QuotaWindow: Identifiable, Equatable, Sendable {
     let usedPercent: Double
     let resetsAt: Date?
 
-    var isUsageBreakdown: Bool { kind == .codeMonthly }
-    func effectiveDisplayMode(_ requested: UsageDisplayMode) -> UsageDisplayMode {
-        isUsageBreakdown ? .used : requested
-    }
-
     var id: QuotaKind { kind }
     var renderedFraction: Double { min(max(usedPercent / 100, 0), 1) }
 }
@@ -490,7 +485,7 @@ struct ProviderSnapshot: Equatable, Sendable {
     ) -> MenuBarReadingValue? {
         if let window = window(for: metric) {
             return .percentage(
-                window.effectiveDisplayMode(displayMode).displayedPercent(from: window.usedPercent)
+                displayMode.displayedPercent(from: window.usedPercent)
             )
         }
         guard billingUsage?.menuBarMetric == metric else { return nil }

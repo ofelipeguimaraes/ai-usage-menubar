@@ -377,14 +377,14 @@ final class AppPreferences {
 
     private static func unique(_ items: [MenuBarItemID]) -> [MenuBarItemID] {
         var seen: Set<MenuBarItemID> = []
-        return items.filter { seen.insert($0).inserted }
+        return items.filter { $0.metric != .codeMonthly && seen.insert($0).inserted }
     }
 
     private static func uniqueMetrics(
         _ metrics: [MenuBarMetricID]
     ) -> [MenuBarMetricID] {
         var seen: Set<MenuBarMetricID> = []
-        return metrics.filter { seen.insert($0).inserted }
+        return metrics.filter { $0 != .codeMonthly && seen.insert($0).inserted }
     }
 
     private static func sanitizedSelections(

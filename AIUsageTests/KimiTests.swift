@@ -2,17 +2,13 @@ import XCTest
 @testable import AIUsage
 
 final class KimiTests: XCTestCase {
-    func testCodeShareIsConsumedContributionEvenInRemainingMode() throws {
-        for ratio in [0.0, 0.0123] {
-            let snapshot = try KimiUsageMapper.map(usage: httpResponse(json:
-                "{\"usages\":{\"limit_month_total\":{\"used_ratio\":0.0621},\"limit_month_code\":{\"used_ratio\":\(ratio)}}}"), profile: nil, now: Date())
-            XCTAssertEqual(snapshot.menuBarValue(for: .codeMonthly, displayMode: .remaining), .percentage(ratio * 100))
-            XCTAssertEqual(snapshot.window(for: .codeMonthly)?.effectiveDisplayMode(.remaining), .used)
-            XCTAssertEqual(snapshot.window(for: .monthly)?.effectiveDisplayMode(.remaining), .remaining)
-            XCTAssertEqual(snapshot.menuBarValue(for: .monthly, displayMode: .remaining), .percentage(93.79))
-        }
+    func testCodeAttributionIsNotExposedAsAQuota() throws {
+        let snapshot = try KimiUsageMapper.map(usage: httpResponse(json:
+            "{\"usages\":{\"limit_month_total\":{\"used_ratio\":0.0621},\"limit_month_code\":{\"used_ratio\":0.01}}}"), profile: nil, now: Date())
+        XCTAssertEqual(snapshot.windows.map(\.kind), [.monthly])
+        XCTAssertNil(snapshot.menuBarValue(for: .codeMonthly, displayMode: .remaining))
+        XCTAssertEqual(snapshot.availableMenuBarItems.map(\.metric), [.monthly])
     }
-
     func testExhaustedFiveHourCounterOverridesAnIncorrectZeroRatio() throws {
         let snapshot = try KimiUsageMapper.map(usage: httpResponse(json: """
             {"limits":[{"window":{"duration":300,"timeUnit":"TIME_UNIT_MINUTE"},
@@ -44,15 +40,15 @@ final class KimiTests: XCTestCase {
      "limit_month_code":{"used_ratio":0.4,"reset_time":"2026-10-27T00:00:00Z"}}}
     """
 
-    func testPlusMapsThreeIndependentQuotasWithoutInventingWeeklyUsage() throws {
+    func testPlusMapsFiveHourAndMonthlyQuotasWithoutInventingWeeklyUsage() throws {
         let snapshot = try KimiUsageMapper.map(
             usage: httpResponse(json: usage),
             profile: httpResponse(json: "{\"user_level_name\":\"Plus\"}"), now: now
         )
         XCTAssertEqual(snapshot.provider, .kimi)
         XCTAssertEqual(snapshot.planName, "Plus")
-        XCTAssertEqual(snapshot.windows.map(\.kind), [.fiveHour, .monthly, .codeMonthly])
-        XCTAssertEqual(snapshot.windows.map(\.usedPercent), [20, 30, 40])
+        XCTAssertEqual(snapshot.windows.map(\.kind), [.fiveHour, .monthly])
+        XCTAssertEqual(snapshot.windows.map(\.usedPercent), [20, 30])
         XCTAssertNotNil(snapshot.windows.last?.resetsAt)
     }
 
@@ -78,7 +74,7 @@ final class KimiTests: XCTestCase {
     func testProfileFailureDoesNotHideUsage() throws {
         let snapshot = try KimiUsageMapper.map(usage: httpResponse(json: usage),
                                               profile: httpResponse(503), now: now)
-        XCTAssertEqual(snapshot.windows.count, 3)
+        XCTAssertEqual(snapshot.windows.count, 2)
         XCTAssertNil(snapshot.planName)
     }
 

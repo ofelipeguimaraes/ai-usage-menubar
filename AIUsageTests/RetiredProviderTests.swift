@@ -3,6 +3,15 @@ import XCTest
 
 @MainActor
 final class RetiredProviderTests: XCTestCase {
+    func testRetiredCodeShareSelectionKeepsMonthlySelection() {
+        let suite = "RetiredMetricTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(Data("[\"kimi\",[\"monthly\",\"codeMonthly\"]]".utf8), forKey: "menuBarMetricSelections.v3")
+        defaults.set(true, forKey: "menuBarConfigured.v3")
+        XCTAssertEqual(AppPreferences(defaults: defaults).menuBarMetricSelections[.kimi], [.monthly])
+    }
+
     func testRemovingOpenCodePreservesOtherProviderPreferences() throws {
         let suite = "RetiredProviderTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!

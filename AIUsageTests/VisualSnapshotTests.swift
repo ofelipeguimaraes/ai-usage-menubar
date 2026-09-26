@@ -556,8 +556,7 @@ final class VisualSnapshotTests: XCTestCase {
                 planName: "Plus",
                 windows: [
                     QuotaWindow(kind: .fiveHour, usedPercent: 20, resetsAt: now.addingTimeInterval(3600)),
-                    QuotaWindow(kind: .monthly, usedPercent: 30, resetsAt: now.addingTimeInterval(86400)),
-                    QuotaWindow(kind: .codeMonthly, usedPercent: 40, resetsAt: now.addingTimeInterval(86400))
+                    QuotaWindow(kind: .monthly, usedPercent: 30, resetsAt: now.addingTimeInterval(86400))
                 ],
                 fetchedAt: now
             ),

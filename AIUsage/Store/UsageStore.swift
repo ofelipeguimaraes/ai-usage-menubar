@@ -242,7 +242,7 @@ final class UsageStore {
                 provider: item.provider,
                 metric: item.metric,
                 value: value,
-                displayMode: state.snapshot?.window(for: item.metric)?.effectiveDisplayMode(displayMode) ?? displayMode,
+                displayMode: displayMode,
                 isStale: state.isStale
             )
         }
