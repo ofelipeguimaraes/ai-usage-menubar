@@ -33,15 +33,18 @@ enum KimiUsageMapper {
         if windows.isEmpty {
             if let summary = ProviderParsing.object(root["usage"]),
                let window = legacyWindow(summary, kind: .weekly) { windows.append(window) }
-            for item in ProviderParsing.array(root["limits"]) {
-                guard let duration = ProviderParsing.object(item["window"]),
-                      ProviderParsing.double(duration["duration"]) == 300,
-                      ProviderParsing.string(duration["timeUnit"]) == "TIME_UNIT_MINUTE",
-                      let detail = ProviderParsing.object(item["detail"]),
-                      let window = legacyWindow(detail, kind: .fiveHour),
-                      !windows.contains(where: { $0.kind == .fiveHour }) else { continue }
-                windows.append(window)
-            }
+        }
+        // Current accounts can return both formats. The named 5-hour ratio can
+        // stay at zero even when the request counter reports an exhausted quota.
+        for item in ProviderParsing.array(root["limits"]) {
+            guard let duration = ProviderParsing.object(item["window"]),
+                  ProviderParsing.double(duration["duration"]) == 300,
+                  ProviderParsing.string(duration["timeUnit"]) == "TIME_UNIT_MINUTE",
+                  let detail = ProviderParsing.object(item["detail"]),
+                  let window = legacyWindow(detail, kind: .fiveHour) else { continue }
+            if let index = windows.firstIndex(where: { $0.kind == .fiveHour }) {
+                if window.usedPercent >= windows[index].usedPercent { windows[index] = window }
+            } else { windows.append(window) }
         }
         guard !windows.isEmpty else {
             throw ProviderFailure(.invalidResponse, "Kimi usage response contains no supported quota data.")

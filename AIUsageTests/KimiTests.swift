@@ -2,6 +2,27 @@ import XCTest
 @testable import AIUsage
 
 final class KimiTests: XCTestCase {
+    func testExhaustedFiveHourCounterOverridesAnIncorrectZeroRatio() throws {
+        let snapshot = try KimiUsageMapper.map(usage: httpResponse(json: """
+            {"limits":[{"window":{"duration":300,"timeUnit":"TIME_UNIT_MINUTE"},
+            "detail":{"limit":"100","used":"100","resetTime":"2026-09-27T00:59:18Z"}}],
+            "usages":{"limit_5h":{"used_ratio":0,"reset_time":"2026-09-27T00:59:17Z"},
+            "limit_month_total":{"used_ratio":0.0621},"limit_month_code":{"used_ratio":0}}}
+            """), profile: nil, now: Date())
+        XCTAssertEqual(snapshot.window(for: .fiveHour)?.usedPercent, 100)
+        XCTAssertEqual(snapshot.window(for: .fiveHour)?.resetsAt, ProviderParsing.date("2026-09-27T00:59:18Z"))
+        XCTAssertEqual(snapshot.window(for: .monthly)?.usedPercent ?? -1, 6.21, accuracy: 0.001)
+        XCTAssertNil(snapshot.window(for: .weekly))
+    }
+
+    func testFiveHourCounterDoesNotEraseHigherReportedUsage() throws {
+        let snapshot = try KimiUsageMapper.map(usage: httpResponse(json: """
+            {"limits":[{"window":{"duration":300,"timeUnit":"TIME_UNIT_MINUTE"},
+            "detail":{"limit":"100","used":"10"}}],"usages":{"limit_5h":{"used_ratio":0.5}}}
+            """), profile: nil, now: Date())
+        XCTAssertEqual(snapshot.window(for: .fiveHour)?.usedPercent, 50)
+    }
+
     private let now = Date(timeIntervalSince1970: 1_790_000_000)
     private let path = "~/.kimi-code/credentials/kimi-code.json"
     private let usage = """
