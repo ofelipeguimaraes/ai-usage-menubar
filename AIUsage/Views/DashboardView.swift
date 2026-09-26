@@ -7,6 +7,9 @@ struct DashboardView: View {
     @Binding var usageDisplayMode: UsageDisplayMode
     @Binding var refreshInterval: RefreshIntervalOption
     var panelSizeMode: PanelSizeMode = .compact
+    var dashboardLayout: DashboardLayout = .singleColumn
+    var maximumHeight: CGFloat = 780
+    var panelWidth: CGFloat = 392
     let availableUpdateVersion: String?
     let isCheckingForUpdates: Bool
     var checkForUpdates: @MainActor () -> Void = {}
@@ -17,13 +20,16 @@ struct DashboardView: View {
             DashboardContentView(
                 store: store,
                 usageDisplayMode: $usageDisplayMode,
-                panelSizeMode: panelSizeMode
+                panelSizeMode: panelSizeMode,
+                dashboardLayout: dashboardLayout,
+                maximumHeight: maximumHeight,
+                panelWidth: panelWidth
             )
                 .safeAreaBar(edge: .bottom, spacing: 0) {
                     footer
                 }
         }
-        .frame(width: 392)
+        .frame(width: panelWidth)
         .onAppear {
             store.setRefreshInterval(refreshInterval)
             store.start()
@@ -149,8 +155,9 @@ struct DashboardContentView: View {
     @Binding var usageDisplayMode: UsageDisplayMode
     var panelSizeMode: PanelSizeMode = .compact
 
-    /// Fixed scroll height used in compact mode when there are more than 2 providers.
-    private static let compactScrollMaxHeight: CGFloat = 390
+    var dashboardLayout: DashboardLayout = .singleColumn
+    var maximumHeight: CGFloat = 780
+    var panelWidth: CGFloat = 392
 
     var body: some View {
         VStack(spacing: 6) {
@@ -161,27 +168,22 @@ struct DashboardContentView: View {
         .padding(.bottom, 6)
     }
 
-    @ViewBuilder
     private var providerRows: some View {
-        if panelSizeMode == .compact && visibleProviders.count > 2 {
-            ScrollView {
-                providerRowsContent
-            }
-            .frame(maxHeight: Self.compactScrollMaxHeight)
-            .scrollIndicators(.hidden)
-        } else {
+        ScrollView(.vertical) {
             providerRowsContent
         }
+        .frame(maxHeight: min(panelSizeMode == .compact ? 390 : .greatestFiniteMagnitude,
+                             max(80, maximumHeight - 110)))
+        .scrollIndicators(.automatic)
     }
 
     private var providerRowsContent: some View {
-        LazyVStack(spacing: 6) {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10, alignment: .top),
+                                 count: dashboardLayout.columnCount(availableWidth: panelWidth)),
+                  alignment: .leading, spacing: 6) {
             ForEach(visibleProviders) { provider in
                 if let state = store.states[provider] {
-                    ProviderSectionView(
-                        state: state,
-                        displayMode: usageDisplayMode
-                    )
+                    ProviderSectionView(state: state, displayMode: usageDisplayMode)
                 }
             }
         }

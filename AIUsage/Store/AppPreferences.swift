@@ -66,6 +66,10 @@ final class AppPreferences {
         }
     }
 
+    var dashboardLayout: DashboardLayout {
+        didSet { defaults.set(dashboardLayout.rawValue, forKey: Key.dashboardLayout) }
+    }
+
     var panelSizeMode: PanelSizeMode {
         didSet {
             defaults.set(panelSizeMode.rawValue, forKey: Key.panelSizeMode)
@@ -190,6 +194,7 @@ final class AppPreferences {
             forKey: Key.refreshInterval,
             in: defaults
         ) ?? .fiveMinutes
+        dashboardLayout = Self.value(DashboardLayout.self, forKey: Key.dashboardLayout, in: defaults) ?? .singleColumn
         panelSizeMode = Self.value(
             PanelSizeMode.self,
             forKey: Key.panelSizeMode,
@@ -500,6 +505,7 @@ final class AppPreferences {
         static let menuBarWindow = "menuBarWindow"
         static let usageDisplayMode = "usageDisplayMode"
         static let refreshInterval = "refreshInterval"
+        static let dashboardLayout = "dashboardLayout.v1"
         static let panelSizeMode = "panelSizeMode"
     }
 }

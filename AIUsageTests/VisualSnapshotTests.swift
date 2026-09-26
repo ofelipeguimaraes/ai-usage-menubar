@@ -136,6 +136,41 @@ final class VisualSnapshotTests: XCTestCase {
         XCTAssertGreaterThan(size.height, 250)
     }
 
+    func testExpandedDashboardFitsShortScreensWithBothCardLayouts() async {
+        let store = await makeFullyPopulatedStore()
+        for layout in DashboardLayout.allCases {
+            let width = layout.preferredWidth
+            let view = DashboardView(
+                store: store,
+                launchAtLogin: LaunchAtLoginController(service: SnapshotLoginService()),
+                usageDisplayMode: .constant(.remaining),
+                refreshInterval: .constant(.fiveMinutes),
+                panelSizeMode: .expanded,
+                dashboardLayout: layout,
+                maximumHeight: 500,
+                panelWidth: width,
+                availableUpdateVersion: nil,
+                isCheckingForUpdates: false
+            )
+            let size = measuredSize(of: view, width: width)
+            XCTAssertEqual(size.width, width, accuracy: 0.5)
+            XCTAssertLessThanOrEqual(size.height, 500)
+            XCTAssertGreaterThan(size.height, 300)
+        }
+        XCTAssertEqual(DashboardLayout.twoColumns.columnCount(availableWidth: 600), 1)
+        XCTAssertEqual(DashboardLayout.twoColumns.columnCount(availableWidth: 780), 2)
+    }
+
+    func testCardLayoutPreferencePersistsAcrossRestarts() {
+        let suite = "LayoutTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let preferences = AppPreferences(defaults: defaults)
+        XCTAssertEqual(preferences.dashboardLayout, .singleColumn)
+        preferences.dashboardLayout = .twoColumns
+        XCTAssertEqual(AppPreferences(defaults: defaults).dashboardLayout, .twoColumns)
+    }
+
     func testSettingsShowsEveryProviderInLightAndDark() async {
         let store = await makeFullyPopulatedStore()
         let suiteName = "VisualSnapshotTests.\(UUID().uuidString)"

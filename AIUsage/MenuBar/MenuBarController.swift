@@ -390,6 +390,11 @@ final class MenuBarController: NSObject {
         in panel: MenuBarPanelWindow,
         below button: NSStatusBarButton
     ) {
+        let screen = button.window?.screen ?? NSScreen.main
+        let available = screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1024, height: 800)
+        let maximumHeight = max(160, available.height - 16)
+        let preferredWidth = route == .dashboard ? preferences.dashboardLayout.preferredWidth : route.width
+        let panelWidth = min(preferredWidth, available.width - 16)
         let rootView: AnyView
         switch route {
         case .dashboard:
@@ -399,6 +404,8 @@ final class MenuBarController: NSObject {
                     launchAtLogin: launchAtLogin,
                     preferences: preferences,
                     updateController: updateController,
+                    maximumHeight: maximumHeight,
+                    panelWidth: panelWidth,
                     openSettings: { [weak self] in
                         self?.showSettings()
                     }
@@ -411,6 +418,8 @@ final class MenuBarController: NSObject {
                     preferences: preferences,
                     launchAtLogin: launchAtLogin,
                     updateController: updateController,
+                    maximumHeight: maximumHeight,
+                    panelWidth: panelWidth,
                     showDashboard: { [weak self] in
                         self?.showDashboard()
                     }
@@ -424,34 +433,19 @@ final class MenuBarController: NSObject {
                 in: .rect(cornerRadius: 22)
             )
         )
-        hostingController.sizingOptions = [.preferredContentSize]
+        hostingController.sizingOptions = []
 
         let measuredSize = hostingController.sizeThatFits(
             in: NSSize(
-                width: route.width,
-                height: .greatestFiniteMagnitude
+                width: panelWidth,
+                height: maximumHeight
             )
         )
 
-        let maxHeight: CGFloat
-        if let screen = statusItem?.button?.window?.screen ?? NSScreen.main {
-            let screenHeight = screen.visibleFrame.height
-            let bottomMargin: CGFloat = 16
-            maxHeight = screenHeight - bottomMargin
-        } else {
-            maxHeight = .greatestFiniteMagnitude
-        }
-
-        let height: CGFloat
-        switch preferences.panelSizeMode {
-        case .compact:
-            height = min(ceil(measuredSize.height), maxHeight)
-        case .expanded:
-            height = min(ceil(measuredSize.height), maxHeight)
-        }
+        let height = min(ceil(measuredSize.height), maximumHeight)
 
         let contentSize = NSSize(
-            width: route.width,
+            width: panelWidth,
             height: height
         )
         hostingController.preferredContentSize = contentSize
@@ -483,8 +477,8 @@ final class MenuBarController: NSObject {
         }
         var frame = panel.frame
         let gap: CGFloat = 6
-        let minX = screen.frame.minX + 4
-        let maxX = max(minX, screen.frame.maxX - 4 - frame.width)
+        let minX = screen.visibleFrame.minX + 4
+        let maxX = max(minX, screen.visibleFrame.maxX - 4 - frame.width)
         let x = min(
             max(buttonWindow.frame.midX - frame.width / 2, minX),
             maxX
@@ -492,9 +486,9 @@ final class MenuBarController: NSObject {
         let y = min(
             max(
                 buttonWindow.frame.minY - gap - frame.height,
-                screen.frame.minY + 4
+                screen.visibleFrame.minY + 4
             ),
-            screen.frame.maxY - gap - frame.height
+            screen.visibleFrame.maxY - gap - frame.height
         )
         frame.origin = NSPoint(x: x, y: y)
         panel.setFrame(frame, display: true)
@@ -645,6 +639,8 @@ private struct DashboardRootView: View {
     let launchAtLogin: LaunchAtLoginController
     @Bindable var preferences: AppPreferences
     @Bindable var updateController: UpdateController
+    let maximumHeight: CGFloat
+    let panelWidth: CGFloat
     let openSettings: @MainActor () -> Void
 
     var body: some View {
@@ -654,6 +650,9 @@ private struct DashboardRootView: View {
             usageDisplayMode: $preferences.usageDisplayMode,
             refreshInterval: $preferences.refreshInterval,
             panelSizeMode: preferences.panelSizeMode,
+            dashboardLayout: preferences.dashboardLayout,
+            maximumHeight: maximumHeight,
+            panelWidth: panelWidth,
             availableUpdateVersion: updateController.availableVersion,
             isCheckingForUpdates: updateController.isChecking,
             checkForUpdates: updateController.checkForUpdates,
@@ -667,6 +666,8 @@ private struct SettingsRootView: View {
     @Bindable var preferences: AppPreferences
     @Bindable var launchAtLogin: LaunchAtLoginController
     @Bindable var updateController: UpdateController
+    let maximumHeight: CGFloat
+    let panelWidth: CGFloat
     let showDashboard: @MainActor () -> Void
 
     var body: some View {
@@ -675,6 +676,8 @@ private struct SettingsRootView: View {
             preferences: preferences,
             launchAtLogin: launchAtLogin,
             updateController: updateController,
+            maximumHeight: maximumHeight,
+            panelWidth: panelWidth,
             showDashboard: showDashboard
         )
     }

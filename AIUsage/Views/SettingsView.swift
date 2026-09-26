@@ -6,19 +6,26 @@ struct SettingsView: View {
     @Bindable var preferences: AppPreferences
     @Bindable var launchAtLogin: LaunchAtLoginController
     @Bindable var updateController: UpdateController
+    var maximumHeight: CGFloat = 780
+    var panelWidth: CGFloat = 560
     var showDashboard: @MainActor () -> Void = {}
 
     var body: some View {
         GlassEffectContainer(spacing: 10) {
             VStack(alignment: .leading, spacing: 10) {
                 header
-                providersSection
-                generalSection
+                ScrollView(.vertical) {
+                    VStack(spacing: 10) {
+                        providersSection
+                        generalSection
+                    }
+                }
+                .frame(maxHeight: max(100, maximumHeight - 130))
                 footer
             }
         }
         .padding(16)
-        .frame(width: MenuBarPanelRoute.settings.width, alignment: .top)
+        .frame(width: panelWidth, alignment: .top)
         .onAppear {
             store.setTrackedProviders(preferences.trackedProviderIDs)
             store.setRefreshInterval(preferences.refreshInterval)
@@ -54,10 +61,7 @@ struct SettingsView: View {
                 detail: "Choose what to track and what appears in the menu bar."
             )
 
-            ScrollView(.vertical) {
-                providerRows
-            }
-                .frame(maxHeight: 420)
+            providerRows
                 .padding(.horizontal, 12)
                 .padding(.vertical, 4)
                 .glassEffect(.regular, in: .rect(cornerRadius: 14))
@@ -177,6 +181,18 @@ struct SettingsView: View {
                     .pickerStyle(.segmented)
                     .labelsHidden()
                     .frame(width: 130)
+                }
+
+                GridRow {
+                    Text("Card Layout")
+                        .foregroundStyle(.secondary)
+                    Picker("Card Layout", selection: $preferences.dashboardLayout) {
+                        ForEach(DashboardLayout.allCases) { layout in
+                            Text(layout.title).tag(layout)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(width: 180)
                 }
 
                 GridRow(alignment: .top) {

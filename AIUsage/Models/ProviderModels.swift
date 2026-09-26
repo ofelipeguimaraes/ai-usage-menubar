@@ -699,3 +699,21 @@ struct SystemDateProvider: DateProviding {
     func now() -> Date { Date() }
 }
 import Foundation
+
+
+enum DashboardLayout: String, CaseIterable, Identifiable, Sendable {
+    case singleColumn
+    case twoColumns
+
+    var id: Self { self }
+    var title: String {
+        switch self {
+        case .singleColumn: "One column"
+        case .twoColumns: "Two columns"
+        }
+    }
+    var preferredWidth: CGFloat { self == .twoColumns ? 780 : 392 }
+    func columnCount(availableWidth: CGFloat) -> Int {
+        self == .twoColumns && availableWidth >= 700 ? 2 : 1
+    }
+}
