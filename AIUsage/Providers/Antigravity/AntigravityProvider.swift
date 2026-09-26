@@ -135,7 +135,7 @@ actor AntigravityProvider: UsageProvider {
         guard case let .success(data) = await client.cloudCode(
             path: AntigravityUsageClient.planPath,
             accessToken: token,
-            userAgent: "agy"
+            userAgent: "antigravity"
         ) else {
             return nil
         }
