@@ -14,13 +14,12 @@ struct SettingsView: View {
         GlassEffectContainer(spacing: 10) {
             VStack(alignment: .leading, spacing: 10) {
                 header
-                ScrollView(.vertical) {
+                ContentFittingScrollView(maximumHeight: max(100, maximumHeight - 130)) {
                     VStack(spacing: 10) {
                         providersSection
                         generalSection
                     }
                 }
-                .frame(maxHeight: max(100, maximumHeight - 130))
                 footer
             }
         }
@@ -134,96 +133,56 @@ struct SettingsView: View {
             Text("General")
                 .font(.headline)
 
-            Grid(
-                alignment: .leading,
-                horizontalSpacing: 18,
-                verticalSpacing: 8
-            ) {
-                GridRow {
-                    Text("Numbers")
-                        .foregroundStyle(.secondary)
-
+            LazyVGrid(columns: [GridItem(.flexible(), alignment: .leading),
+                                GridItem(.flexible(), alignment: .leading)],
+                      alignment: .leading, spacing: 12) {
+                settingField("Numbers") {
                     Picker("Numbers", selection: $preferences.usageDisplayMode) {
-                        ForEach(UsageDisplayMode.allCases) { mode in
-                            Text(mode.title)
-                                .tag(mode)
-                        }
+                        ForEach(UsageDisplayMode.allCases) { Text($0.title).tag($0) }
                     }
                     .pickerStyle(.segmented)
-                    .labelsHidden()
-                    .frame(width: 130)
                 }
-
-                GridRow {
-                    Text("Refresh")
-                        .foregroundStyle(.secondary)
-
+                settingField("Refresh") {
                     Picker("Refresh", selection: $preferences.refreshInterval) {
-                        ForEach(RefreshIntervalOption.allCases) { option in
-                            Text(option.title)
-                                .tag(option)
-                        }
+                        ForEach(RefreshIntervalOption.allCases) { Text($0.title).tag($0) }
                     }
-                    .labelsHidden()
-                    .frame(width: 180, alignment: .leading)
                 }
-
-                GridRow {
-                    Text("Panel Size")
-                        .foregroundStyle(.secondary)
-
+                settingField("Panel Size") {
                     Picker("Panel Size", selection: $preferences.panelSizeMode) {
-                        ForEach(PanelSizeMode.allCases) { mode in
-                            Text(mode.title)
-                                .tag(mode)
-                        }
+                        ForEach(PanelSizeMode.allCases) { Text($0.title).tag($0) }
                     }
                     .pickerStyle(.segmented)
-                    .labelsHidden()
-                    .frame(width: 130)
                 }
-
-                GridRow {
-                    Text("Card Layout")
-                        .foregroundStyle(.secondary)
+                settingField("Card Layout") {
                     Picker("Card Layout", selection: $preferences.dashboardLayout) {
-                        ForEach(DashboardLayout.allCases) { layout in
-                            Text(layout.title).tag(layout)
-                        }
+                        ForEach(DashboardLayout.allCases) { Text($0.title).tag($0) }
                     }
-                    .labelsHidden()
-                    .frame(width: 180)
                 }
-
-                GridRow(alignment: .top) {
-                    Text("Startup")
-                        .foregroundStyle(.secondary)
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Toggle(
-                            "Launch at Login",
-                            isOn: Binding(
-                                get: { launchAtLogin.isEnabled },
-                                set: { launchAtLogin.setEnabled($0) }
-                            )
-                        )
-                        .toggleStyle(.switch)
-                        .controlSize(.small)
-
-                        if launchAtLogin.requiresApproval {
-                            Text("Approval needed in System Settings")
-                                .font(.caption)
-                                .foregroundStyle(.orange)
-                        } else if let error = launchAtLogin.errorMessage {
-                            Text(error)
-                                .font(.caption)
-                                .foregroundStyle(.red)
-                        }
+                settingField("Startup") {
+                    Toggle("Launch at Login", isOn: Binding(
+                        get: { launchAtLogin.isEnabled },
+                        set: { launchAtLogin.setEnabled($0) }
+                    ))
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                    if launchAtLogin.requiresApproval {
+                        Text("Approval needed in System Settings").font(.caption).foregroundStyle(.orange)
+                    } else if let error = launchAtLogin.errorMessage {
+                        Text(error).font(.caption).foregroundStyle(.red)
                     }
                 }
             }
-            .padding(.leading, 12)
         }
+    }
+
+    private func settingField<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(title).font(.caption).foregroundStyle(.secondary)
+            content().labelsHidden().frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
     }
 
     private var footer: some View {
