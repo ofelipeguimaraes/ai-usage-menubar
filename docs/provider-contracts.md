@@ -168,7 +168,7 @@ selects the credential slot and official regional endpoint:
   preserved instead of overwritten.
 
 The current quota contract exposes `usages.limit_5h`, `limit_7d`,
-`limit_month_total`, and `limit_month_code`. Only returned, valid quotas are
+`limit_month_total`. The `limit_month_code` attribution is not displayed as a quota. Only returned, valid quotas are
 shown. The Plus account verified during implementation returns 5-hour,
 monthly total, and monthly code quotas; it does not return a weekly quota.
 The monthly total is selected by default for the menu bar. Monthly code is a
@@ -294,11 +294,10 @@ Its `monthlyBreakdown` function calculates `codeRatio` from `monthCode.usedRatio
 and `kimiRatio` from `monthTotal.usedRatio - codeRatio`. Thus the code value is
 consumption attributed to Code, not an independent remaining allowance.
 
-The app now labels the existing `codeMonthly` metric `Code Share`, always showing
-consumed percentage in the card and menu bar, including when global Numbers is
-set to Left. Its drawing uses a neutral consumption style rather than warning
-thresholds for an independent quota. The stored metric ID is retained, preserving
-saved selections. Monthly remains the total membership pool's remaining/used quota.
+The app displays only actionable quota windows: five-hour, monthly total, and
+weekly for legacy accounts. Code attribution is omitted from cards and menu-bar
+choices. Old `codeMonthly` selections are filtered without removing the user's
+other selections; the enum identifier is retained only for decoding old preferences.
 
 A live response reported 100/100 five-hour requests, 0.0621 monthly total usage,
 and 0 code share. The app displays the service's zero contribution without

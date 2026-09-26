@@ -82,7 +82,7 @@ the menu bar rather than the Dock. macOS 26 or newer is required.
 - DeepSeek API balance
 - QwenCloud personal Token Plan usage
 - Grok weekly quota
-- Kimi membership plan badge, 5-hour and monthly total limits, plus Code Share usage breakdown
+- Kimi membership plan badge, 5-hour and monthly total limits
 - Kimi weekly limits for legacy memberships and Extra Usage balance when available
 - GLM Coding Plan badge, 5-hour and weekly usage from your Z.ai OpenCode key
 - MiniMax Token Plan badge, 5-hour and weekly usage from your OpenCode subscription key
