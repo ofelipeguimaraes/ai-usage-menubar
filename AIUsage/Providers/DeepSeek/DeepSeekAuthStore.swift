@@ -21,7 +21,8 @@ struct DeepSeekAuthStore: Sendable {
         if let key = trimmed(environment.value(for: "DEEPSEEK_API_KEY")) {
             return key
         }
-        for path in Self.authPaths {
+        let paths = [(environment.value(for: "XDG_DATA_HOME") ?? "~/.local/share") + "/opencode/auth.json", Self.authPaths[1]]
+        for path in paths {
             guard files.exists(path),
                   let text = try? files.readText(path),
                   let data = text.data(using: .utf8),
@@ -29,6 +30,7 @@ struct DeepSeekAuthStore: Sendable {
                     with: data
                   ) as? [String: Any],
                   let provider = object["deepseek"] as? [String: Any],
+                  provider["type"] as? String == "api",
                   let key = trimmed(provider["key"] as? String) else {
                 continue
             }

@@ -24,6 +24,8 @@ final class LoginShellEnvironment: @unchecked Sendable {
         "CODEX_HOME",
         "KIMI_CODE_HOME",
         "KIMI_SHARE_DIR",
+        "OPENCODE_API_KEY",
+        "DEEPSEEK_API_KEY",
         "ZAI_API_KEY",
         "MINIMAX_API_KEY",
         "MINIMAX_CN_API_KEY",
@@ -127,6 +129,7 @@ struct SystemProviderAvailabilityChecker: ProviderAvailabilityChecking {
             let path = environment.value(for: "PATH") ?? ""
 
             return Set(ProviderID.allCases.filter { provider in
+                if provider == .deepseek { return DeepSeekAuthStore().loadAPIKey() != nil }
                 if provider == .zai { return ZaiAuthStore().load() != nil }
                 if provider == .minimax { return MiniMaxAuthStore().load() != nil }
                 let descriptor = provider.descriptor

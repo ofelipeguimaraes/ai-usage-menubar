@@ -25,14 +25,15 @@ enum GrokUsageMapper {
             )
         }
 
+        guard let percent = ProviderParsing.double(config["creditUsagePercent"]), percent.isFinite else {
+            throw ProviderFailure(.invalidResponse, "Grok usage percentage is unavailable.")
+        }
         var windows: [QuotaWindow] = []
         if periodType == Self.weeklyPeriodType {
             windows.append(QuotaWindow(
                 kind: .weekly,
                 usedPercent: clampPercent(
-                    ProviderParsing.double(
-                        config["creditUsagePercent"]
-                    ) ?? 0
+                    percent
                 ),
                 resetsAt: end
             ))
