@@ -22,6 +22,8 @@ final class LoginShellEnvironment: @unchecked Sendable {
     private static let supportedNames = [
         "CLAUDE_CONFIG_DIR",
         "CODEX_HOME",
+        "KIMI_CODE_HOME",
+        "KIMI_SHARE_DIR",
         "PATH"
     ]
     private static let beginMarker = "__AIUSAGE_ENV_BEGIN__"

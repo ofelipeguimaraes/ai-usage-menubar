@@ -11,6 +11,7 @@ enum ProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
     case opencode
     case deepseek
     case qwen
+    case kimi
 
     var id: Self { self }
 
@@ -26,6 +27,7 @@ enum ProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .opencode: "OpenCode"
         case .deepseek: "DeepSeek"
         case .qwen: "Qwen"
+        case .kimi: "Kimi"
         }
     }
 
@@ -41,6 +43,7 @@ enum ProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .opencode: "ProviderOpenCode"
         case .deepseek: "ProviderDeepSeek"
         case .qwen: "ProviderQwen"
+        case .kimi: "ProviderKimi"
         }
     }
 
@@ -67,6 +70,7 @@ enum ProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .opencode: ["opencode"]
         case .deepseek: []
         case .qwen: ["qwen"]
+        case .kimi: ["kimi"]
         }
     }
 
@@ -111,6 +115,8 @@ enum ProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
             ]
         case .qwen:
             ["~/.qwen/usage"]
+        case .kimi:
+            ["~/.kimi-code/bin/kimi", "~/.kimi-code/credentials", "~/.kimi"]
         }
     }
 
@@ -120,7 +126,7 @@ enum ProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .copilot: .credits
         case .claude, .codex, .antigravity, .devin, .grok: .weekly
         case .deepseek: .balance
-        case .qwen: .monthly
+        case .qwen, .kimi: .monthly
         }
     }
 }
@@ -143,6 +149,7 @@ enum QuotaKind: String, Codable, Hashable, Sendable {
     case claudePoolWeekly
     case fiveHour
     case monthly
+    case codeMonthly
 
     var title: String {
         switch self {
@@ -163,6 +170,7 @@ enum QuotaKind: String, Codable, Hashable, Sendable {
         case .claudePoolWeekly: "Claude Weekly"
         case .fiveHour: "5 Hour"
         case .monthly: "Monthly"
+        case .codeMonthly: "Code Monthly"
         }
     }
 
@@ -185,6 +193,7 @@ enum QuotaKind: String, Codable, Hashable, Sendable {
         case .claudePoolWeekly: .claudePoolWeekly
         case .fiveHour: .fiveHour
         case .monthly: .monthly
+        case .codeMonthly: .codeMonthly
         }
     }
 }
@@ -209,6 +218,7 @@ enum MenuBarMetricID: String, CaseIterable, Codable, Identifiable, Sendable {
     case balance
     case fiveHour
     case monthly
+    case codeMonthly
 
     var id: Self { self }
 
@@ -233,6 +243,7 @@ enum MenuBarMetricID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .balance: "Balance"
         case .fiveHour: "5 Hour"
         case .monthly: "Monthly"
+        case .codeMonthly: "Code Monthly"
         }
     }
 
@@ -257,6 +268,7 @@ enum MenuBarMetricID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .balance: "dollarsign.circle"
         case .fiveHour: "clock.badge.exclamationmark"
         case .monthly: "calendar"
+        case .codeMonthly: "terminal"
         }
     }
 
@@ -281,6 +293,7 @@ enum MenuBarMetricID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .balance: "B"
         case .fiveHour: "5H"
         case .monthly: "M"
+        case .codeMonthly: "CM"
         }
     }
 
@@ -305,6 +318,7 @@ enum MenuBarMetricID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .balance: nil
         case .fiveHour: .fiveHour
         case .monthly: .monthly
+        case .codeMonthly: .codeMonthly
         }
     }
 }

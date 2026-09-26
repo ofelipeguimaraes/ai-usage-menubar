@@ -59,7 +59,8 @@ final class UsageStore {
             GrokProvider(),
             OpenCodeProvider(),
             DeepSeekProvider(),
-            QwenProvider()
+            QwenProvider(),
+            KimiProvider()
         ],
         availabilityChecker: any ProviderAvailabilityChecking =
             SystemProviderAvailabilityChecker(),

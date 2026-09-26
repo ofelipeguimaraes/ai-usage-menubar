@@ -92,6 +92,10 @@ final class AppPreferences {
            defaults.object(forKey: Key.openUsageProvidersAdded) == nil {
             initialTrackedProviders.formUnion(Self.openUsageProviders)
         }
+        if defaults.object(forKey: Key.kimiProviderAdded) == nil {
+            initialTrackedProviders.insert(.kimi)
+        }
+        defaults.set(true, forKey: Key.kimiProviderAdded)
         trackedProviderIDs = initialTrackedProviders
         defaults.set(true, forKey: Key.openUsageProvidersAdded)
 
@@ -336,7 +340,8 @@ final class AppPreferences {
         .grok,
         .opencode,
         .deepseek,
-        .qwen
+        .qwen,
+        .kimi
     ]
 
     private static func hasLegacyInstallation(
@@ -472,6 +477,7 @@ final class AppPreferences {
         static let previousConfiguredMenuBarItems =
             "menuBarItemsConfigured.v1"
         static let hasCompletedInitialSetup = "initialSettingsCompleted.v1"
+        static let kimiProviderAdded = "kimiProviderAdded.v1"
         static let openUsageProvidersAdded =
             "openUsageProvidersAdded.v1"
         static let menuBarSelection = "menuBarSelection"

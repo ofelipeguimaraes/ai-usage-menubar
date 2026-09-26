@@ -452,7 +452,7 @@ final class AppPreferencesTests: XCTestCase {
         let firstUpdatedRun = AppPreferences(defaults: defaults)
         XCTAssertEqual(
             firstUpdatedRun.trackedProviderIDs,
-            [.claude, .cursor, .antigravity, .copilot, .devin, .grok, .opencode, .deepseek, .qwen]
+            [.claude, .cursor, .antigravity, .copilot, .devin, .grok, .opencode, .deepseek, .qwen, .kimi]
         )
 
         firstUpdatedRun.setTracking(false, for: .grok)
