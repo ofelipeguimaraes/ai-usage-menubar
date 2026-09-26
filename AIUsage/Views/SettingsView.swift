@@ -54,7 +54,10 @@ struct SettingsView: View {
                 detail: "Choose what to track and what appears in the menu bar."
             )
 
-            providerRows
+            ScrollView(.vertical) {
+                providerRows
+            }
+                .frame(maxHeight: 420)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 4)
                 .glassEffect(.regular, in: .rect(cornerRadius: 14))
