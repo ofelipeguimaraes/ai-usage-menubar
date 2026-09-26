@@ -45,6 +45,24 @@ final class VisualSnapshotTests: XCTestCase {
         }
     }
 
+    func testStartupSwitchDrawsItsThumbOnTheFirstFrame() throws {
+        for enabled in [false, true] {
+            let view = Toggle("Launch at Login", isOn: .constant(enabled))
+                .toggleStyle(StartupToggleStyle())
+            let renderer = ImageRenderer(content: view)
+            renderer.scale = 1
+            let image = try XCTUnwrap(renderer.nsImage)
+            let bitmap = try XCTUnwrap(NSBitmapImageRep(data: try XCTUnwrap(image.tiffRepresentation)))
+            XCTAssertEqual(bitmap.pixelsWide, 44)
+            XCTAssertEqual(bitmap.pixelsHigh, 24)
+            let thumb = try XCTUnwrap(bitmap.colorAt(x: enabled ? 32 : 12, y: 12)?.usingColorSpace(.deviceRGB))
+            XCTAssertGreaterThan(thumb.redComponent, 0.95)
+            XCTAssertGreaterThan(thumb.greenComponent, 0.95)
+            XCTAssertGreaterThan(thumb.blueComponent, 0.95)
+            XCTAssertGreaterThan(thumb.alphaComponent, 0.95)
+        }
+    }
+
     func testRefreshFeedbackStaysInsideTheFooterButton() {
         let idleSize = measuredSize(
             of: RefreshButtonLabel(isRefreshing: false),

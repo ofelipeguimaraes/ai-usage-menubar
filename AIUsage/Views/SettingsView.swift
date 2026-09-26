@@ -168,8 +168,7 @@ struct SettingsView: View {
                             set: { launchAtLogin.setEnabled($0) }
                         ))
                         .labelsHidden()
-                        .toggleStyle(.switch)
-                        .controlSize(.regular)
+                        .toggleStyle(StartupToggleStyle())
                         .fixedSize()
                         .accessibilityLabel("Launch at Login")
                     }
