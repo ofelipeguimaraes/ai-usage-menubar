@@ -159,12 +159,20 @@ struct SettingsView: View {
                     }
                 }
                 settingField("Startup") {
-                    Toggle("Launch at Login", isOn: Binding(
-                        get: { launchAtLogin.isEnabled },
-                        set: { launchAtLogin.setEnabled($0) }
-                    ))
-                    .toggleStyle(.switch)
-                    .controlSize(.small)
+                    HStack {
+                        Text("Launch at Login")
+                            .font(.callout)
+                        Spacer(minLength: 8)
+                        Toggle("Launch at Login", isOn: Binding(
+                            get: { launchAtLogin.isEnabled },
+                            set: { launchAtLogin.setEnabled($0) }
+                        ))
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .controlSize(.regular)
+                        .fixedSize()
+                        .accessibilityLabel("Launch at Login")
+                    }
                     if launchAtLogin.requiresApproval {
                         Text("Approval needed in System Settings").font(.caption).foregroundStyle(.orange)
                     } else if let error = launchAtLogin.errorMessage {
