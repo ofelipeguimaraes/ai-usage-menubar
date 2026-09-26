@@ -309,3 +309,22 @@ Sources: the installed official CLI's `parseQuotaUsages`, `quotaUsageRows`, and
 `monthlyBreakdown` functions, plus the
 [official shared-credit rules](https://www.kimi.com/en/help/membership/membership-update-rules)
 and [monthly quota documentation](https://www.kimi.com/code/docs/en/kimi-code/error-reference.html).
+
+## MiniMax unchanged-percent review
+
+A read-only review on 2026-09-26 confirmed that the live `general` bucket returned
+99 remaining for both interval and weekly percentages, with all absolute counters
+zero. Repeating the query with `Cache-Control: no-cache` produced the same values
+and a decreasing `remains_time`; the response itself sent
+`Cache-Control: max-age=0, no-cache, no-store`. The app correctly maps this to
+1% consumed / 99% remaining. The current response offers no finer consumption
+measurement, so the app cannot infer a lower balance from message counts.
+
+A temporary integration test compares the app's selected credential with the
+OpenCode MiniMax credential without logging either key, and compares live mapper
+and provider readings. No inference calls or paid requests are made. The
+[official MiniMax FAQ](https://platform.minimax.io/docs/token-plan/faq) identifies
+`/v1/token_plan/remains` as the quota query and the subscription console as the
+source of truth for available usage. If console values differ, the discrepancy
+requires further first-party endpoint investigation rather than fabricated app
+percentages.
