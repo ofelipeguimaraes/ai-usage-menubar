@@ -8,7 +8,6 @@ enum ProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
     case copilot
     case devin
     case grok
-    case opencode
     case deepseek
     case qwen
     case kimi
@@ -26,7 +25,6 @@ enum ProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .copilot: "GitHub Copilot"
         case .devin: "Devin"
         case .grok: "Grok"
-        case .opencode: "OpenCode"
         case .deepseek: "DeepSeek"
         case .qwen: "Qwen"
         case .kimi: "Kimi"
@@ -44,7 +42,6 @@ enum ProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .copilot: "ProviderCopilot"
         case .devin: "ProviderDevin"
         case .grok: "ProviderGrok"
-        case .opencode: "ProviderOpenCode"
         case .deepseek: "ProviderDeepSeek"
         case .qwen: "ProviderQwen"
         case .kimi: "ProviderKimi"
@@ -73,7 +70,6 @@ enum ProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .copilot: ["copilot", "github-copilot"]
         case .devin: ["devin"]
         case .grok: ["grok"]
-        case .opencode: ["opencode"]
         case .deepseek: []
         case .qwen: ["qwen"]
         case .kimi: ["kimi"]
@@ -113,8 +109,6 @@ enum ProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
             ]
         case .grok:
             ["~/.grok"]
-        case .opencode:
-            ["~/.opencode", "~/.config/opencode"]
         case .deepseek:
             [
                 "~/.local/share/opencode/auth.json",
@@ -131,7 +125,7 @@ enum ProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
 
     var defaultMenuBarMetric: MenuBarMetricID {
         switch self {
-        case .cursor, .opencode: .totalUsage
+        case .cursor: .totalUsage
         case .copilot: .credits
         case .claude, .codex, .antigravity, .devin, .grok, .minimax, .zai: .weekly
         case .deepseek: .balance
@@ -446,7 +440,6 @@ struct ProviderSnapshot: Equatable, Sendable {
     let planName: String?
     let windows: [QuotaWindow]
     let billingUsage: BillingUsage?
-    let statusMessage: String?
     let fetchedAt: Date
 
     init(
@@ -454,14 +447,12 @@ struct ProviderSnapshot: Equatable, Sendable {
         planName: String?,
         windows: [QuotaWindow],
         billingUsage: BillingUsage? = nil,
-        statusMessage: String? = nil,
         fetchedAt: Date
     ) {
         self.provider = provider
         self.planName = planName
         self.windows = windows
         self.billingUsage = billingUsage
-        self.statusMessage = statusMessage
         self.fetchedAt = fetchedAt
     }
 

@@ -24,7 +24,6 @@ final class LoginShellEnvironment: @unchecked Sendable {
         "CODEX_HOME",
         "KIMI_CODE_HOME",
         "KIMI_SHARE_DIR",
-        "OPENCODE_API_KEY",
         "DEEPSEEK_API_KEY",
         "ZAI_API_KEY",
         "MINIMAX_API_KEY",

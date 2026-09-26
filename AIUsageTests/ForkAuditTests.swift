@@ -2,25 +2,6 @@ import XCTest
 @testable import AIUsage
 
 final class ForkAuditTests: XCTestCase {
-    func testOpenCodeUsesServerQuotasInsteadOfLocalTokenTotals() throws {
-        let snapshot = try OpenCodeUsageMapper.map(httpResponse(json: """
-            {"usage":{"rolling":{"percent":25,"resetsAt":"2027-01-01T00:00:00Z"},
-            "weekly":{"percent":40},"monthly":{"percent":60}}}
-            """), now: Date())
-        XCTAssertEqual(snapshot.planName, "Go")
-        XCTAssertEqual(snapshot.windows.map(\.usedPercent), [25, 40, 60])
-        XCTAssertEqual(snapshot.windows.map(\.kind), [.fiveHour, .weekly, .monthly])
-        XCTAssertThrowsError(try OpenCodeUsageMapper.map(httpResponse(403), now: Date()))
-        XCTAssertThrowsError(try OpenCodeUsageMapper.map(httpResponse(json: "{\"usage\":{}}"), now: Date()))
-    }
-
-    func testOpenCodeReadsOnlyItsOwnCredentialFromCustomDataHome() {
-        let files = MemoryFiles(["/custom/opencode/auth.json": """
-            {"opencode":{"type":"api","key":"zen-key"},"zai-coding-plan":{"type":"api","key":"glm-key"}}
-            """])
-        XCTAssertEqual(OpenCodeAuthStore(files: files, environment: MockEnvironment(values: ["XDG_DATA_HOME": "/custom"]), keychain: MemoryKeychain()).loadToken(), "zen-key")
-    }
-
     func testGrokMissingUsageIsNotReportedAsUnused() {
         XCTAssertThrowsError(try GrokUsageMapper.map(response: httpResponse(json: """
             {"config":{"currentPeriod":{"type":"USAGE_PERIOD_TYPE_WEEKLY","end":"2027-01-01T00:00:00Z"}}}

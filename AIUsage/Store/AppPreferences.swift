@@ -83,6 +83,7 @@ final class AppPreferences {
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        Self.removeRetiredOpenCodePreferences(in: defaults)
 
         let restoredProviders = Self.decode(
             [ProviderID].self,
@@ -355,7 +356,6 @@ final class AppPreferences {
         .copilot,
         .devin,
         .grok,
-        .opencode,
         .deepseek,
         .qwen,
         .kimi,
@@ -457,6 +457,39 @@ final class AppPreferences {
             }
         }
         return unique(resolved)
+    }
+
+    /// Remove retired IDs before decoding so one obsolete entry cannot reset
+    /// the user's remaining tracking or menu bar selections.
+    private static func removeRetiredOpenCodePreferences(in defaults: UserDefaults) {
+        for key in [Key.trackedProviderIDs, Key.visibleMenuBarProviderIDs,
+                    Key.currentMenuBarItems, Key.previousMenuBarItems,
+                    Key.menuBarMetricSelections] {
+            guard let data = defaults.data(forKey: key),
+                  let json = try? JSONSerialization.jsonObject(with: data) else { continue }
+            let cleaned: Any
+            if key == Key.menuBarMetricSelections, let entries = json as? [Any] {
+                // Codable enum-keyed dictionaries use alternating key/value entries.
+                guard entries.count.isMultiple(of: 2) else { continue }
+                var retained: [Any] = []
+                for index in stride(from: 0, to: entries.count, by: 2)
+                where entries[index] as? String != "opencode" {
+                    retained.append(contentsOf: [entries[index], entries[index + 1]])
+                }
+                cleaned = retained
+            } else if var entries = json as? [String: Any] {
+                entries.removeValue(forKey: "opencode")
+                cleaned = entries
+            } else if let entries = json as? [Any] {
+                cleaned = entries.filter {
+                    ($0 as? String) != "opencode" &&
+                    (($0 as? [String: Any])?["provider"] as? String) != "opencode"
+                }
+            } else { continue }
+            if let updated = try? JSONSerialization.data(withJSONObject: cleaned), updated != data {
+                defaults.set(updated, forKey: key)
+            }
+        }
     }
 
     private static func encode<Value: Encodable>(_ value: Value) -> Data? {

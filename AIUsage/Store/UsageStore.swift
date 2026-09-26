@@ -57,7 +57,6 @@ final class UsageStore {
             CopilotProvider(),
             DevinProvider(),
             GrokProvider(),
-            OpenCodeProvider(),
             DeepSeekProvider(),
             QwenProvider(),
             KimiProvider(),
