@@ -15,7 +15,7 @@ validation correction during this audit. Existing raw provider/metric identifier
 were preserved; new cases extend the catalog. Tracking migrations run once and
 respect subsequent opt-out.
 
-Intentional differences are additional OpenCode, DeepSeek, Qwen, Kimi, MiniMax,
+Intentional differences are additional DeepSeek, Qwen, Kimi, MiniMax,
 and GLM integrations; authoritative Antigravity local quotas and an account-bound
 weekly cache; panel sizing, scrolling and card layouts; and removal of Sparkle.
 These touch shared UI and preferences, so upstream changes require normal merge
@@ -44,7 +44,6 @@ bump, tag, or release was created.
 | Devin | API `planInfo.planName` | No user-specific tier. |
 | Grok | API `subscription_tier_display` | Returned display name preserved; absent name is not assumed to be SuperGrok. |
 | DeepSeek | `API` service label | This is not a subscription tier. The API exposes balance, not a paid plan name. |
-| OpenCode | Successful Go-entitlement quota endpoint → `Go` | Zen is pay-as-you-go. The old fixed `Zen` badge and fabricated monthly quota were removed. Structured missing-Go entitlement confirms Zen and shows a normal informational card; unstructured denial never identifies a plan. |
 | QwenCloud | Console subscription `specCode` | Missing subscription lookup falls back to `Token Plan`, a service label; personal international console plans only. |
 | Kimi | Profile API `user_level_name` | No Plus default; both official API regions and legacy/current CLI credential layouts are supported. |
 | GLM (Z.ai) | Quota API `data.level` | No Lite default; unknown nonempty tiers are preserved. Missing level gives `Coding Plan`. Global Z.ai credentials are supported, not arbitrary China/BigModel accounts. |
@@ -63,14 +62,15 @@ only the available accounts and did not store secrets in the project.
 
 ## Corrections and validation
 
-- Removed OpenCode's fixed two-million-token denominator and local SQLite scan.
-  Only server-returned Go quotas are shown. API-confirmed Zen accounts use a normal pay-as-you-go card with a console link; no balance or allowance is invented.
+- Removed the OpenCode Zen/Go provider completely at the user's request.
+  Existing preference entries are pruned while retaining other providers' settings.
+  Shared OpenCode CLI credential files for other services are not modified.
 - Grok rejects missing/nonfinite percentages instead of showing zero usage.
 - DeepSeek supports custom OpenCode data directories and API credential types;
   its environment key is also captured for menu-bar launches from Finder.
 - Removed the dormant dashboard update control, retained an inert controller for
   internal API compatibility, and corrected stale updater/provider documentation.
-- Added regression tests for official OpenCode quota parsing, credential separation,
+- Added regression tests for retired provider preference migration, credential separation,
   missing Grok usage, DeepSeek paths, and multiple/unknown plan names.
 
 Sources and detailed provider response contracts are recorded in

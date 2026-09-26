@@ -127,16 +127,15 @@ causes at most one refresh and one retry.
 | Grok | `~/.grok/auth.json` | Grok CLI billing and settings APIs | Weekly |
 | DeepSeek | `deepseek` entry in `~/.local/share/opencode/auth.json`, then `~/.config/opencode/auth.json`, then `DEEPSEEK_API_KEY` | `api.deepseek.com/user/balance` | Balance |
 | QwenCloud personal Token Plan | Existing Chromium browser console session | QwenCloud console gateway | 5-Hour, Weekly, Monthly |
-| OpenCode Go | Existing OpenCode auth file or legacy Keychain | `opencode.ai/zen/go/v1/usage` | 5-Hour, Weekly, Monthly |
 
 Cursor, Antigravity, and Grok refresh expiring access tokens using the refresh
 credential already stored by the corresponding tool. Refreshed tokens are
 persisted only where necessary; Antigravity's derived access token is cached
 privately by AI Usage and bound to a hash of the current refresh credential.
 
-OpenCode now reads the official Go quota endpoint. Zen-only accounts do not
-receive an invented quota based on local sessions. GLM reuses the Z.ai key
-already stored by OpenCode; OpenRouter remains unsupported.
+The OpenCode Zen/Go subscription provider has been removed. OpenCode CLI auth
+files remain a credential source for DeepSeek, MiniMax, and GLM, each of which
+queries its own service. OpenRouter remains unsupported.
 
 ## Persistence and failure policy
 
@@ -273,38 +272,6 @@ Sources: [official usage query documentation](https://docs.z.ai/devpack/extensio
 [official query script](https://github.com/zai-org/zai-coding-plugins/blob/main/plugins/glm-plan-usage/skills/usage-query-skill/scripts/query-usage.mjs),
 and the live quota response. The icon comes from
 [models.dev](https://github.com/anomalyco/models.dev/blob/dev/providers/zai/logo.svg).
-
-
-## OpenCode quota audit correction
-
-The previous implementation assumed a two-million-token monthly allowance and
-summed all local sessions, including requests made to other providers. That
-estimate has been removed. The read-only `GET /zen/go/v1/usage` endpoint returns
-`usage.rolling`, `weekly`, and `monthly`, with consumed `percent` and ISO
-`resetsAt`. Its implementation requires an active Go entitlement, so a successful
-quota response is labeled `Go`; this is an endpoint contract, not a user-specific
-plan assumption. The structured 403 `EntitlementError` with `OpenCode Go subscription required.`
-confirms an authenticated account without Go entitlement and produces a normal
-`Zen` card with pay-as-you-go information and a balance-console link. Other 403
-responses, including edge/network blocks, do not identify a plan and remain
-transient failures. Requests identify the app with `User-Agent: AIUsage`. Zen
-balance remains available in the billing console. No inference requests are made.
-
-Credentials come from `OPENCODE_API_KEY`, OpenCode's `opencode-go` or `opencode`
-API entries (including `XDG_DATA_HOME`), then the legacy `opencode-api-key`
-Keychain entry. Independent GLM, MiniMax, and DeepSeek subscriptions used through
-OpenCode remain separate providers.
-
-Sources: [official Go usage endpoint source](https://github.com/anomalyco/opencode/blob/dev/packages/console/app/src/routes/zen/go/v1/usage.ts),
-[Go documentation](https://opencode.ai/docs/go/), and
-[Zen documentation](https://opencode.ai/docs/zen/).
-
-
-Zen identification was verified against the installed account using a temporary
-read-only provider test. Generic 403 status alone is never used to infer Zen or
-Go, and a missing balance is not represented as zero or a fabricated allowance.
-The first request without an app User-Agent returned an edge-layer 403; after
-adding it, the service returned its structured missing-Go-entitlement response.
 
 
 ## Kimi overlapping five-hour formats

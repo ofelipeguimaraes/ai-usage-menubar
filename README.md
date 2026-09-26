@@ -28,7 +28,7 @@
 </p>
 
 AI Usage shows Claude Code, Codex, Cursor, Antigravity, GitHub Copilot, Devin,
-Grok, OpenCode, DeepSeek, Qwen, Kimi, MiniMax, and GLM limits and stays out of the way. No extra account, API key, local
+Grok, DeepSeek, Qwen, Kimi, MiniMax, and GLM limits and stays out of the way. No extra account, API key, local
 server, telemetry, usage history, or background log scanning.
 
 > [!NOTE]
@@ -79,7 +79,6 @@ the menu bar rather than the Dock. macOS 26 or newer is required.
 - Antigravity Gemini and Claude pool limits
 - GitHub Copilot credits, chat, and completions
 - Devin daily and weekly quota
-- OpenCode Go server-reported quotas and API-confirmed Zen pay-as-you-go status
 - DeepSeek API balance
 - QwenCloud personal Token Plan usage
 - Grok weekly quota
