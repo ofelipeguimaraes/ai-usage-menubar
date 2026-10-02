@@ -188,3 +188,14 @@ func qwenGatewayJSON(_ payload: String) -> String {
     {"code":"200","data":{"DataV2":{"data":{"code":"SUCCESS","data":\(payload)}}}}
     """
 }
+
+/// Answers OpenCode credential queries by integration ID; never touches a real database.
+struct MockSQLite: SQLiteValueReading {
+    var values: [String: String] = [:]
+
+    func queryValue(path: String, sql: String) throws -> String? {
+        values.first { sql.contains("'\($0.key)'") }?.value
+    }
+
+    func execute(path: String, sql: String) throws {}
+}

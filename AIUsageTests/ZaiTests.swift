@@ -6,14 +6,23 @@ final class ZaiTests: XCTestCase {
         let files = MemoryFiles(["/custom/opencode/auth.json": """
             {"zai-coding-plan":{"type":"api","key":" test-key "},"minimax-coding-plan":{"type":"api","key":"other"}}
             """])
-        let store = ZaiAuthStore(files: files, environment: MockEnvironment(values: ["XDG_DATA_HOME": "/custom"]))
+        let store = ZaiAuthStore(files: files, environment: MockEnvironment(values: ["XDG_DATA_HOME": "/custom"]), sqlite: MockSQLite())
         XCTAssertEqual(store.load(), "test-key")
         XCTAssertNil(ZaiAuthStore(files: MemoryFiles(["~/.local/share/opencode/auth.json":
-            "{\"zai\":{\"type\":\"api\",\"key\":\"pay-as-you-go\"}}"]), environment: MockEnvironment()).load())
+            "{\"zai\":{\"type\":\"api\",\"key\":\"pay-as-you-go\"}}"]), environment: MockEnvironment(), sqlite: MockSQLite()).load())
+    }
+
+    func testOpenCodeDatabaseCredentialIsPreferredOverLegacyAuthFile() {
+        let files = MemoryFiles(["~/.local/share/opencode/auth.json":
+            "{\"zai-coding-plan\":{\"type\":\"api\",\"key\":\"stale-key\"}}"])
+        let sqlite = MockSQLite(values: ["zai-coding-plan": "{\"type\":\"key\",\"key\":\" db-key \"}"])
+        XCTAssertEqual(ZaiAuthStore(files: files, environment: MockEnvironment(), sqlite: sqlite).load(), "db-key")
+        XCTAssertNil(ZaiAuthStore(files: MemoryFiles(), environment: MockEnvironment(),
+                                  sqlite: MockSQLite(values: ["zai": "{\"type\":\"key\",\"key\":\"payg\"}"])).load())
     }
 
     func testEnvironmentKeyTakesPrecedence() {
-        XCTAssertEqual(ZaiAuthStore(files: MemoryFiles(), environment: MockEnvironment(values: ["ZAI_API_KEY": " key "])).load(), "key")
+        XCTAssertEqual(ZaiAuthStore(files: MemoryFiles(), environment: MockEnvironment(values: ["ZAI_API_KEY": " key "]), sqlite: MockSQLite()).load(), "key")
     }
 
     func testLiteCreditQuotasUseReportedPercentAndMillisecondResets() throws {
@@ -58,7 +67,7 @@ final class ZaiTests: XCTestCase {
         let http = MockHTTPClient([httpResponse(json: """
             {"code":200,"success":true,"data":{"level":"lite","limits":[{"type":"CREDIT_LIMIT","unit":3,"number":5,"percentage":1}]}}
             """)])
-        let provider = ZaiProvider(authStore: ZaiAuthStore(files: MemoryFiles(), environment: MockEnvironment(values: ["ZAI_API_KEY": "test-key"])), http: http)
+        let provider = ZaiProvider(authStore: ZaiAuthStore(files: MemoryFiles(), environment: MockEnvironment(values: ["ZAI_API_KEY": "test-key"]), sqlite: MockSQLite()), http: http)
         let snapshot = try await provider.fetch()
         XCTAssertEqual(snapshot.provider, .zai)
         let requests = await http.capturedRequests()

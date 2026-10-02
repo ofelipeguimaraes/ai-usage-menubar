@@ -103,7 +103,7 @@ final class MiniMaxTests: XCTestCase {
     func testOpenCodeSubscriptionKeyIsReadWithoutChangingOtherProviders() throws {
         let text = "{\"minimax-coding-plan\":{\"type\":\"api\",\"key\":\"subscription\"},\"deepseek\":{\"key\":\"other\"}}"
         let files = MemoryFiles([authPath: text])
-        let credentials = try XCTUnwrap(MiniMaxAuthStore(files: files, environment: MockEnvironment()).load())
+        let credentials = try XCTUnwrap(MiniMaxAuthStore(files: files, environment: MockEnvironment(), sqlite: MockSQLite()).load())
         XCTAssertEqual(credentials.apiKey, "subscription")
         XCTAssertEqual(credentials.host, "www.minimax.io")
         XCTAssertEqual(try files.readText(authPath), text)
@@ -111,32 +111,38 @@ final class MiniMaxTests: XCTestCase {
 
     func testPayAsYouGoKeyIsNotMistakenForSubscription() {
         let files = MemoryFiles([authPath: "{\"minimax\":{\"type\":\"api\",\"key\":\"ordinary-api-key\"}}"])
-        XCTAssertNil(MiniMaxAuthStore(files: files, environment: MockEnvironment()).load())
+        XCTAssertNil(MiniMaxAuthStore(files: files, environment: MockEnvironment(), sqlite: MockSQLite()).load())
     }
 
     func testGenericProviderCanHoldASubscriptionKey() throws {
         let files = MemoryFiles([authPath: "{\"minimax\":{\"type\":\"api\",\"key\":\"sk-cp-example\"}}"])
-        XCTAssertEqual(MiniMaxAuthStore(files: files, environment: MockEnvironment()).load()?.apiKey,
+        XCTAssertEqual(MiniMaxAuthStore(files: files, environment: MockEnvironment(), sqlite: MockSQLite()).load()?.apiKey,
                        "sk-cp-example")
     }
 
     func testXDGAuthPathAndChinaProviderSelectCorrectRegion() throws {
         let files = MemoryFiles(["/custom/opencode/auth.json": "{\"minimax-cn-coding-plan\":{\"type\":\"api\",\"key\":\"china-key\"}}"])
-        let store = MiniMaxAuthStore(files: files, environment: MockEnvironment(values: ["XDG_DATA_HOME": "/custom"]))
+        let store = MiniMaxAuthStore(files: files, environment: MockEnvironment(values: ["XDG_DATA_HOME": "/custom"]), sqlite: MockSQLite())
         XCTAssertEqual(store.load()?.host, "www.minimax.cn")
+    }
+
+    func testOpenCodeDatabaseCredentialIsRead() {
+        let sqlite = MockSQLite(values: ["minimax-coding-plan": "{\"type\":\"key\",\"key\":\"db-key\"}"])
+        XCTAssertEqual(MiniMaxAuthStore(files: MemoryFiles(), environment: MockEnvironment(), sqlite: sqlite).load()?.apiKey,
+                       "db-key")
     }
 
     func testEnvironmentCredentialTakesPriority() {
         let store = MiniMaxAuthStore(files: MemoryFiles(), environment: MockEnvironment(
             values: ["MINIMAX_API_KEY": "  configured-key  "]
-        ))
+        ), sqlite: MockSQLite())
         XCTAssertEqual(store.load()?.apiKey, "configured-key")
     }
 
     func testProviderQueriesUsageAndCurrentPlanUsingReadOnlyRequests() async throws {
         let files = MemoryFiles([authPath: "{\"minimax-coding-plan\":{\"type\":\"api\",\"key\":\"subscription\"}}"])
         let http = MockHTTPClient([httpResponse(json: usage), httpResponse(json: plan)])
-        let provider = MiniMaxProvider(authStore: MiniMaxAuthStore(files: files, environment: MockEnvironment()),
+        let provider = MiniMaxProvider(authStore: MiniMaxAuthStore(files: files, environment: MockEnvironment(), sqlite: MockSQLite()),
             client: MiniMaxUsageClient(http: http), dateProvider: FixedDateProvider(value: now))
         let snapshot = try await provider.fetch()
         XCTAssertEqual(snapshot.planName, "Plus")
