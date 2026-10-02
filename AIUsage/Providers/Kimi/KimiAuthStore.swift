@@ -41,8 +41,10 @@ struct KimiAuthStore: Sendable {
         for home in homes {
             let config = (try? files.readText(home + "/config.toml")) ?? ""
             // Restrict credential destinations to the official Kimi API hosts.
+            // The OAuth reference may be inline or in a `[providers."managed:kimi-code".oauth]` sub-table.
             let managed = config.components(separatedBy: "\n[")
-                .first { $0.contains("providers.") && $0.contains("managed:kimi-code") } ?? ""
+                .filter { $0.contains("providers.") && $0.contains("managed:kimi-code") }
+                .joined(separator: "\n[")
             let global = managed.contains("https://api.kimi.ai/coding/v1") ||
                 (managed.isEmpty && (try? files.readText(home + "/region"))?.trimmingCharacters(in: .whitespacesAndNewlines) == "global")
             let key = capture(#"key\s*=\s*"oauth/([A-Za-z0-9_-]+)""#, in: managed) ?? "kimi-code"

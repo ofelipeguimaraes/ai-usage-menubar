@@ -110,6 +110,29 @@ final class KimiTests: XCTestCase {
         XCTAssertEqual(state.oauthHost.host, "auth.kimi.ai")
     }
 
+    func testOAuthSubTableSelectsCredentialSlotDespiteRegionFile() throws {
+        let files = MemoryFiles([
+            "/custom/config.toml": """
+            default_model = "kimi-code/kimi-for-coding"
+
+            [providers."managed:kimi-code"]
+            type = "kimi"
+            base_url = "https://api.kimi.ai/coding/v1"
+
+            [providers."managed:kimi-code".oauth]
+            storage = "file"
+            key = "oauth/kimi-code-env-0e4f"
+            oauth_host = "https://auth.kimi.ai"
+            """,
+            "/custom/region": "mainland-cn",
+            "/custom/credentials/kimi-code-env-0e4f.json": "{\"access_token\":\"env-token\"}"
+        ])
+        let store = KimiAuthStore(files: files, environment: MockEnvironment(values: ["KIMI_CODE_HOME": "/custom"]))
+        let state = try XCTUnwrap(store.load())
+        XCTAssertEqual(state.credentials.accessToken, "env-token")
+        XCTAssertEqual(state.baseURL.host, "api.kimi.ai")
+    }
+
     func testCredentialRotationDoesNotOverwriteConcurrentLogin() throws {
         let files = MemoryFiles([path: "{\"access_token\":\"old\",\"refresh_token\":\"refresh\"}"])
         let store = KimiAuthStore(files: files, environment: MockEnvironment())
