@@ -10,10 +10,21 @@ struct QwenAuthStore: Sendable {
         "login_aliyunid_ticket"
     ]
 
-    let cookies: BrowserCookieReading
+    /// OpenCode integration that holds a QwenCloud Token Plan key. The key
+    /// cannot read usage, but it proves the plan is in use without Qwen Code.
+    static let openCodeIntegrationIDs = ["alibaba-token-plan"]
 
-    init(cookies: BrowserCookieReading = ChromiumCookieReader()) {
+    let cookies: BrowserCookieReading
+    let openCode: OpenCodeCredentialReader
+
+    init(cookies: BrowserCookieReading = ChromiumCookieReader(),
+         openCode: OpenCodeCredentialReader = OpenCodeCredentialReader()) {
         self.cookies = cookies
+        self.openCode = openCode
+    }
+
+    func hasOpenCodeTokenPlan() -> Bool {
+        Self.openCodeIntegrationIDs.contains { openCode.apiKey(for: $0) != nil }
     }
 
     func loadSession() throws -> BrowserCookieSession? {

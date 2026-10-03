@@ -235,6 +235,28 @@ final class ProviderTests: XCTestCase {
         }
     }
 
+    func testQwenDetectsTokenPlanConfiguredInOpenCode() {
+        let openCode = OpenCodeCredentialReader(
+            files: MemoryFiles(),
+            environment: MockEnvironment(),
+            sqlite: MockSQLite(values: [
+                "alibaba-token-plan": #"{"type":"key","key":"sk-sp-test"}"#
+            ])
+        )
+        let store = QwenAuthStore(
+            cookies: MockBrowserCookieReader(session: nil),
+            openCode: openCode
+        )
+
+        XCTAssertTrue(store.hasOpenCodeTokenPlan())
+        XCTAssertFalse(QwenAuthStore(
+            cookies: MockBrowserCookieReader(session: nil),
+            openCode: OpenCodeCredentialReader(
+                files: MemoryFiles(), environment: MockEnvironment(), sqlite: MockSQLite()
+            )
+        ).hasOpenCodeTokenPlan())
+    }
+
     func testQwenFetchesTokenPlanUsageFromConsoleSession() async throws {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         let http = MockHTTPClient([

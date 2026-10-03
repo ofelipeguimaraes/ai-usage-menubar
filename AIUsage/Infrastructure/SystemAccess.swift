@@ -131,6 +131,7 @@ struct SystemProviderAvailabilityChecker: ProviderAvailabilityChecking {
                 if provider == .deepseek { return DeepSeekAuthStore().loadAPIKey() != nil }
                 if provider == .zai { return ZaiAuthStore().load() != nil }
                 if provider == .minimax { return MiniMaxAuthStore().load() != nil }
+                if provider == .qwen, QwenAuthStore().hasOpenCodeTokenPlan() { return true }
                 let descriptor = provider.descriptor
                 return descriptor.executableNames.contains {
                     Self.containsExecutable(named: $0, searchPath: path)

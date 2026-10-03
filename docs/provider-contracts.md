@@ -126,7 +126,7 @@ causes at most one refresh and one retry.
 | Devin | `~/.local/share/devin/credentials.toml`, then Devin state SQLite database | Codeium SeatManagement Connect RPC | Daily, Weekly |
 | Grok | `~/.grok/auth.json` | Grok CLI billing and settings APIs | Weekly |
 | DeepSeek | `deepseek` entry in `~/.local/share/opencode/auth.json`, then `~/.config/opencode/auth.json`, then `DEEPSEEK_API_KEY` | `api.deepseek.com/user/balance` | Balance |
-| QwenCloud personal Token Plan | Existing Chromium browser console session | QwenCloud console gateway | 5-Hour, Weekly, Monthly |
+| QwenCloud personal Token Plan | Existing Chromium browser console session; detected through Qwen Code or an OpenCode `alibaba-token-plan` credential | QwenCloud console gateway | 5-Hour, Weekly, Monthly |
 
 Cursor, Antigravity, and Grok refresh expiring access tokens using the refresh
 credential already stored by the corresponding tool. Refreshed tokens are
