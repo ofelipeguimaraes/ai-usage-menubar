@@ -101,7 +101,7 @@ final class LaunchAtLoginController {
         case .unavailable:
             isEnabled = false
             requiresApproval = false
-            errorMessage = "Launch at Login is unavailable for this build."
+            errorMessage = "Launch at Login needs AI Usage installed in Applications."
         }
     }
 }
