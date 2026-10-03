@@ -4,7 +4,9 @@ set -euo pipefail
 
 script_directory="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repository_directory="$(dirname "$script_directory")"
-derived_data_directory="$repository_directory/DerivedData-Install"
+# The .noindex suffix keeps the build product out of Spotlight, so only the
+# installed copy shows up there.
+derived_data_directory="$repository_directory/DerivedData-Install.noindex"
 install_directory="${AI_USAGE_INSTALL_DIR:-${HOME}/Applications}"
 built_application="$derived_data_directory/Build/Products/Release/AI Usage.app"
 installed_application="$install_directory/AI Usage.app"
