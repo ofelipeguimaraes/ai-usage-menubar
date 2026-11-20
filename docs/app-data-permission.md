@@ -43,6 +43,26 @@ stable identity would remove this; until then, re-grant after each rebuild.
 - `testMissingBrowserStoreStaysMissingSession` — an absent browser store still
   returns nil (genuinely signed out).
 
+## macOS 27: switches flip back for ad-hoc builds
+
+On macOS 27.2 the per-browser App Data switches for ad-hoc signed builds
+revert to off immediately after being enabled (observed live, both by hand
+and through accessibility). The same update also started denying the hourly
+launchd cookie push of the companion `ai-agents` repo (`PermissionError
+[Errno 1] Operation not permitted` on the Brave root): both readers lost
+their grants at the update, while terminal-launched reads kept working
+because the terminal holds its own grant.
+
+Fix: sign local builds with a stable identity instead of ad-hoc:
+
+    ./scripts/sign-local.sh     # once; creates ~/.config/aiusage-sign
+    ./scripts/install.sh        # re-signs automatically afterwards
+
+The grant then keys to the certificate, not the CDHash, and survives
+rebuilds; enable the switches once more after signing. The launchd push job
+needs its own grant for the Python executable it runs (or switch the plist
+to `/usr/bin/python3` and grant that path).
+
 ## Incident record
 
 2026-11-20: commits `a9810e9` (surface the denial) and `c8821d1` (correct Settings
