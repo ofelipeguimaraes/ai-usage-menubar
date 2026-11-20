@@ -421,6 +421,8 @@ private struct FailureRow: View {
         switch failure.kind {
         case .authentication:
             "person.crop.circle.badge.exclamationmark"
+        case .permission:
+            "lock.fill"
         case .rateLimited:
             "hourglass"
         case .transient, .invalidResponse, .storage:

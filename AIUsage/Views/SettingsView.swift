@@ -418,6 +418,10 @@ private struct ProviderStatusPresentation {
                 text = "Not logged in"
                 systemImage = "person.crop.circle.badge.exclamationmark"
                 color = .orange
+            case .permission:
+                text = "Permission needed"
+                systemImage = "lock.fill"
+                color = .orange
             case .rateLimited:
                 text = "Rate limited"
                 systemImage = "hourglass"

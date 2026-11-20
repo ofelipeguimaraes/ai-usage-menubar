@@ -519,6 +519,7 @@ enum ProviderFailureKind: String, Sendable {
     case rateLimited
     case invalidResponse
     case storage
+    case permission
 }
 
 struct ProviderFailure: LocalizedError, Equatable, Sendable {
@@ -538,7 +539,7 @@ struct ProviderFailure: LocalizedError, Equatable, Sendable {
         switch kind {
         case .transient, .rateLimited, .invalidResponse:
             true
-        case .authentication, .storage:
+        case .authentication, .storage, .permission:
             false
         }
     }

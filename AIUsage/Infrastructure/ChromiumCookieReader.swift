@@ -35,6 +35,9 @@ struct BrowserCookieSession: Equatable, Sendable {
 protocol BrowserCookieReading: Sendable {
     /// Returns the most recently used profile that holds at least one of
     /// `requiredNames` for a domain ending in one of `domainSuffixes`.
+    /// Throws `ProviderFailure(.permission, …)` when macOS denies access to
+    /// every browser store that could hold a session, so callers can ask for
+    /// the App Data grant instead of reporting a missing sign-in.
     func session(
         domainSuffixes: [String],
         requiredNames: Set<String>
@@ -111,12 +114,33 @@ final class ChromiumCookieReader: BrowserCookieReading, @unchecked Sendable {
         requiredNames: Set<String>
     ) throws -> BrowserCookieSession? {
         var best: (browser: Browser, rows: [RawCookie], lastAccess: Int64)?
+        var permissionFailure: ProviderFailure?
         for browser in browsers {
-            for database in cookieDatabases(for: browser) {
-                guard let rows = try? readRows(
-                    database: database,
-                    domainSuffixes: domainSuffixes
-                ) else { continue }
+            let databases: [URL]
+            do {
+                databases = try cookieDatabases(for: browser)
+            } catch {
+                if Self.isPermissionError(error) {
+                    permissionFailure = Self.appDataFailure(for: browser)
+                }
+                continue
+            }
+            for database in databases {
+                let rows: [RawCookie]
+                do {
+                    rows = try readRows(
+                        database: database,
+                        domainSuffixes: domainSuffixes
+                    )
+                } catch let failure as ProviderFailure {
+                    if failure.kind == .permission { permissionFailure = failure }
+                    continue
+                } catch {
+                    if Self.isPermissionError(error) {
+                        permissionFailure = Self.appDataFailure(for: browser)
+                    }
+                    continue
+                }
                 guard let lastAccess = rows
                     .filter({ requiredNames.contains($0.name) })
                     .map(\.lastAccess)
@@ -127,7 +151,12 @@ final class ChromiumCookieReader: BrowserCookieReading, @unchecked Sendable {
             }
         }
 
-        guard let best else { return nil }
+        guard let best else {
+            // A denied App Data grant otherwise looks exactly like "signed
+            // out": macOS 26 records unanswered prompts as silent denials.
+            if let permissionFailure { throw permissionFailure }
+            return nil
+        }
         let key = try encryptionKey(for: best.browser)
         let cookies = best.rows.compactMap { row -> BrowserCookie? in
             guard let value = Self.decrypt(row, key: key), !value.isEmpty else {
@@ -140,12 +169,10 @@ final class ChromiumCookieReader: BrowserCookieReading, @unchecked Sendable {
 
     // MARK: - Profiles
 
-    private func cookieDatabases(for browser: Browser) -> [URL] {
+    private func cookieDatabases(for browser: Browser) throws -> [URL] {
         let root = URL(fileURLWithPath: expandHome(browser.supportPath))
         let fileManager = FileManager.default
-        guard let entries = try? fileManager.contentsOfDirectory(atPath: root.path) else {
-            return []
-        }
+        let entries = try fileManager.contentsOfDirectory(atPath: root.path)
         return entries
             .filter { $0 == "Default" || $0.hasPrefix("Profile ") }
             .flatMap { profile -> [URL] in
@@ -155,6 +182,33 @@ final class ChromiumCookieReader: BrowserCookieReading, @unchecked Sendable {
                     directory.appendingPathComponent("Cookies")
                 ].filter { fileManager.fileExists(atPath: $0.path) }
             }
+    }
+
+    // MARK: - App Data permission
+
+    /// macOS 26 gates other apps' data behind the App Data TCC grant, and an
+    /// unanswered prompt is recorded as a denial that never re-prompts.
+    private static func isPermissionError(_ error: Error) -> Bool {
+        let ns = error as NSError
+        switch ns.domain {
+        case NSCocoaErrorDomain:
+            return ns.code == NSFileReadNoPermissionError
+                || ns.code == NSFileWriteNoPermissionError
+        case NSPOSIXErrorDomain:
+            return ns.code == Int(EPERM) || ns.code == Int(EACCES)
+        default:
+            return false
+        }
+    }
+
+    private static func appDataFailure(for browser: Browser) -> ProviderFailure {
+        ProviderFailure(
+            .permission,
+            "macOS blocked AI Usage from reading \(browser.name)'s data. "
+                + "Allow \"access data from other apps\" for AI Usage in "
+                + "System Settings → Privacy & Security → App Management, "
+                + "then refresh."
+        )
     }
 
     // MARK: - SQLite

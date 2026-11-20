@@ -604,6 +604,49 @@ final class ChromiumCookieReaderTests: XCTestCase {
         XCTAssertEqual(value, "ticket-value")
     }
 
+    func testSurfacesAppDataDenialInsteadOfMissingSession() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("AIUsage-tests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        try FileManager.default.setAttributes([.posixPermissions: 0], ofItemAtPath: root.path)
+        let reader = ChromiumCookieReader(browsers: [
+            ChromiumCookieReader.Browser(
+                name: "Brave",
+                supportPath: root.path,
+                keychainService: "Brave Safe Storage"
+            )
+        ])
+
+        XCTAssertThrowsError(
+            try reader.session(
+                domainSuffixes: ["qwencloud.com"],
+                requiredNames: ["login_qwencloud_ticket"]
+            )
+        ) { error in
+            let failure = error as? ProviderFailure
+            XCTAssertEqual(failure?.kind, .permission)
+            XCTAssertTrue(failure?.message.contains("Brave") == true)
+        }
+    }
+
+    func testMissingBrowserStoreStaysMissingSession() throws {
+        let reader = ChromiumCookieReader(browsers: [
+            ChromiumCookieReader.Browser(
+                name: "Brave",
+                supportPath: "/nonexistent-aiusage-tests/Brave-Browser",
+                keychainService: "Brave Safe Storage"
+            )
+        ])
+
+        XCTAssertNil(
+            try reader.session(
+                domainSuffixes: ["qwencloud.com"],
+                requiredNames: ["login_qwencloud_ticket"]
+            )
+        )
+    }
+
     func testCookieDomainMatching() {
         let shared = BrowserCookie(hostKey: ".qwencloud.com", name: "a", value: "1")
         let hostOnly = BrowserCookie(hostKey: "home.qwencloud.com", name: "b", value: "2")
