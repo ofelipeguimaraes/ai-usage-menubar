@@ -21,6 +21,30 @@ final class MenuBarControllerTests: XCTestCase {
         XCTAssertFalse(gate.consumeSuppression())
     }
 
+    func testSuppressionSurvivesRunloopTurnsUntilNextMouseDown() {
+        var gate = PanelToggleGate()
+
+        gate.panelDidClose()
+        let turn = XCTestExpectation(description: "runloop turn")
+        DispatchQueue.main.async { turn.fulfill() }
+        wait(for: [turn], timeout: 1)
+
+        // Dismissal observers hop through a Task; the mouse-up action of the
+        // same click must still see the suppression a turn later.
+        XCTAssertTrue(gate.consumeSuppression())
+    }
+
+    func testSuppressionExpiresAfterTheClickWindow() {
+        var gate = PanelToggleGate()
+        let close = Date()
+
+        gate.panelDidClose(at: close)
+        XCTAssertTrue(gate.consumeSuppression(at: close.addingTimeInterval(0.2)))
+
+        gate.panelDidClose(at: close)
+        XCTAssertFalse(gate.consumeSuppression(at: close.addingTimeInterval(1)))
+    }
+
     func testSettingsRouteExpandsTheSameCompactMenuBarPanel() {
         XCTAssertEqual(MenuBarPanelRoute.dashboard.width, 392)
         XCTAssertEqual(MenuBarPanelRoute.settings.width, 560)

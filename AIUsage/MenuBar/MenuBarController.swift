@@ -9,21 +9,29 @@ protocol ApplicationActivating: AnyObject {
 
 extension NSApplication: ApplicationActivating {}
 
+/// Suppresses the status-item action of the click that just dismissed the
+/// panel. Dismissal observers hop through a Task, so the close can land
+/// before or after the mouse-up action of the same click; a short time
+/// window covers both orders without swallowing a later deliberate click.
+/// Only mouse-driven dismissals arm the gate — Esc and space changes must
+/// not eat the next open.
 struct PanelToggleGate {
-    private(set) var suppressesNextToggle = false
+    static let suppressionWindow: TimeInterval = 0.5
 
-    mutating func panelDidClose() {
-        suppressesNextToggle = true
+    private var suppressedUntil: Date?
+
+    mutating func panelDidClose(at now: Date = Date()) {
+        suppressedUntil = now.addingTimeInterval(Self.suppressionWindow)
     }
 
-    mutating func consumeSuppression() -> Bool {
-        guard suppressesNextToggle else { return false }
-        suppressesNextToggle = false
-        return true
+    mutating func consumeSuppression(at now: Date = Date()) -> Bool {
+        guard let until = suppressedUntil else { return false }
+        suppressedUntil = nil
+        return now < until
     }
 
     mutating func clearSuppression() {
-        suppressesNextToggle = false
+        suppressedUntil = nil
     }
 }
 
@@ -311,6 +319,7 @@ final class MenuBarController: NSObject {
     func start() {
         guard !isStarted else { return }
         isStarted = true
+        toggleGate.clearSuppression()
 
         let item = statusBar.statusItem(withLength: NSStatusItem.variableLength)
         statusItem = item
@@ -504,7 +513,7 @@ final class MenuBarController: NSObject {
                       !panel.frame.contains(NSEvent.mouseLocation) else {
                     return
                 }
-                self.closePanel()
+                self.closePanel(suppressingNextToggle: true)
             }
         }
         localKeyMonitor = NSEvent.addLocalMonitorForEvents(
@@ -520,7 +529,9 @@ final class MenuBarController: NSObject {
                 object: panel,
                 queue: .main
             ) { [weak self] _ in
-                Task { @MainActor in self?.closePanel() }
+                Task { @MainActor in
+                    self?.closePanel(suppressingNextToggle: true)
+                }
             }
         )
         panelObservers.append(
@@ -534,14 +545,13 @@ final class MenuBarController: NSObject {
         )
     }
 
-    private func closePanel() {
+    private func closePanel(suppressingNextToggle: Bool = false) {
         guard let panel else { return }
         removePanelDismissal()
         if panel.isVisible {
             panel.orderOut(nil)
-            toggleGate.panelDidClose()
-            DispatchQueue.main.async { [weak self] in
-                self?.toggleGate.clearSuppression()
+            if suppressingNextToggle {
+                toggleGate.panelDidClose()
             }
         }
         releasePanel()
