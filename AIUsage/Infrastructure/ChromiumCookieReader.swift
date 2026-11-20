@@ -206,7 +206,7 @@ final class ChromiumCookieReader: BrowserCookieReading, @unchecked Sendable {
             .permission,
             "macOS blocked AI Usage from reading \(browser.name)'s data. "
                 + "Allow \"access data from other apps\" for AI Usage in "
-                + "System Settings → Privacy & Security → App Management, "
+                + "System Settings → Privacy & Security → Files & Folders, "
                 + "then refresh."
         )
     }
