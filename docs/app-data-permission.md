@@ -59,9 +59,30 @@ Fix: sign local builds with a stable identity instead of ad-hoc:
     ./scripts/install.sh        # re-signs automatically afterwards
 
 The grant then keys to the certificate, not the CDHash, and survives
-rebuilds; enable the switches once more after signing. The launchd push job
-needs its own grant for the Python executable it runs (or switch the plist
-to `/usr/bin/python3` and grant that path).
+rebuilds.
+
+Validated recovery sequence on macOS 27.2.1 (the switches only stick after
+all of it, in order):
+
+1. `./scripts/sign-local.sh` — dedicated keychain + self-signed identity.
+2. Trust the certificate for code signing, otherwise the identity stays
+   `CSSMERR_TP_NOT_TRUSTED` and grants still revert:
+   `security add-trusted-cert -r trustRoot -p codeSign -k ~/.config/aiusage-sign/signing.keychain-db ~/.config/aiusage-sign/cert.pem`
+3. `tccutil reset SystemPolicyAppData com.burakgon.aiusage` and the same
+   for `SystemPolicyAppDataDetailed` — clears the poisoned denial record
+   whose switches flip back off.
+4. Re-enable the per-browser switches once; they persist. tccd then logs
+   `kTCCServiceSystemPolicyAppDataDetailed … Allowed (User Consent)`.
+
+Do not reset TCC or flip the switches again without need once healthy.
+
+Known pending (separate task): the companion launchd cookie push runs
+`/usr/bin/python3`, an xcode-select shim (`com.apple.dt.xcode_select
+.tool-shim-public`); its denial is *Service Policy* — Apple binaries cannot
+be granted App Data through the UI. Proposed fix: a signed wrapper launcher
+between launchd and python so the responsible process is a third-party
+identity. Until then the terminal-side `/qwen-cota --force` refreshes the
+container session.
 
 ## Incident record
 
