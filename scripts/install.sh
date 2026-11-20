@@ -28,7 +28,18 @@ xcodebuild \
     build
 
 mkdir -p "$install_directory"
+# ditto merges: drop leftovers (e.g. an interrupted codesign's .cstemp) that
+# would otherwise invalidate the fresh signature.
+if [[ -d "$installed_application" ]]; then
+    /bin/rm -rf "$installed_application"
+fi
 /usr/bin/ditto "$built_application" "$installed_application"
+
+# Stable local identity keeps TCC grants alive across rebuilds (macOS 27
+# flips the App Data switches back off for ad-hoc/CDHash-churning builds).
+if [[ -f "$HOME/.config/aiusage-sign/keychain-pass" ]]; then
+    bash "$script_directory/sign-local.sh" "$installed_application"
+fi
 
 if [[ "${AI_USAGE_SKIP_OPEN:-0}" != "1" ]]; then
     open "$installed_application"
